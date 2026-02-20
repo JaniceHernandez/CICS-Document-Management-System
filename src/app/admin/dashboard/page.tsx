@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -21,7 +22,7 @@ import { Users, FileText, Download, TrendingUp, Bell, Plus, Loader2, MessageSqua
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { AnnouncementDialog } from '@/components/admin/announcement-dialog';
 import { format, subDays, startOfDay, isSameDay } from 'date-fns';
 
@@ -32,7 +33,7 @@ export default function AdminDashboard() {
   const { user, isUserLoading } = useUser();
   const [isAnnOpen, setIsAnnOpen] = useState(false);
 
-  // Firestore Queries - Live data streams
+  // Firestore Queries - Waiting for auth
   const activityLogsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(50));
@@ -40,7 +41,7 @@ export default function AdminDashboard() {
 
   const studentsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return collection(firestore, 'users');
+    return query(collection(firestore, 'users'), where('role', '==', 'Student'));
   }, [firestore, user]);
 
   const documentsQuery = useMemoFirebase(() => {
@@ -59,13 +60,13 @@ export default function AdminDashboard() {
   }, [firestore, user]);
 
   const { data: logs, isLoading: logsLoading } = useCollection(activityLogsQuery);
-  const { data: allUsers } = useCollection(studentsQuery);
+  const { data: students } = useCollection(studentsQuery);
   const { data: allDocs } = useCollection(documentsQuery);
   const { data: allInquiries } = useCollection(inquiriesQuery);
   const { data: allCategories } = useCollection(categoriesQuery);
 
-  // Dynamic Metrics
-  const studentCount = allUsers?.filter(u => u.role === 'Student').length || 0;
+  // Dynamic Metrics - derived from real-time collections
+  const studentCount = students?.length || 0;
   const docCount = allDocs?.length || 0;
   const totalDownloads = allDocs?.reduce((acc, d) => acc + (d.downloadCount || 0), 0) || 0;
   const activeInquiries = allInquiries?.filter(i => i.status !== 'Resolved').length || 0;
@@ -118,12 +119,11 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { label: 'Registered Students', value: studentCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100/50' },
-              { label: 'Active Documents', value: docCount, icon: FileText, color: 'text-purple-600', bg: 'bg-purple-100/50' },
-              { label: 'Cloud Downloads', value: totalDownloads, icon: Download, color: 'text-emerald-600', bg: 'bg-emerald-100/50' },
+              { label: 'Students', value: studentCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100/50' },
+              { label: 'Documents', value: docCount, icon: FileText, color: 'text-purple-600', bg: 'bg-purple-100/50' },
+              { label: 'Downloads', value: totalDownloads, icon: Download, color: 'text-emerald-600', bg: 'bg-emerald-100/50' },
               { label: 'Open Inquiries', value: activeInquiries, icon: MessageSquare, color: 'text-amber-600', bg: 'bg-amber-100/50' },
             ].map((stat) => (
               <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
@@ -141,14 +141,13 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Activity Trends Chart */}
             <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
                   <Activity className="h-6 w-6 text-primary" />
                   Activity Velocity
                 </CardTitle>
-                <CardDescription>Live tracking of logins and document downloads (Last 7 Days)</CardDescription>
+                <CardDescription>Live tracking (Last 7 Days)</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -169,21 +168,20 @@ export default function AdminDashboard() {
                     <Tooltip 
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                     />
-                    <Area type="monotone" dataKey="logins" stroke="#003366" fillOpacity={1} fill="url(#colorLogins)" strokeWidth={3} name="User Logins" />
-                    <Area type="monotone" dataKey="downloads" stroke="#FFD700" fillOpacity={1} fill="url(#colorDownloads)" strokeWidth={3} name="Doc Downloads" />
+                    <Area type="monotone" dataKey="logins" stroke="#003366" fillOpacity={1} fill="url(#colorLogins)" strokeWidth={3} name="Logins" />
+                    <Area type="monotone" dataKey="downloads" stroke="#FFD700" fillOpacity={1} fill="url(#colorDownloads)" strokeWidth={3} name="Downloads" />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Library Distribution Pie */}
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
                   <TrendingUp className="h-6 w-6 text-primary" />
-                  Resource Mix
+                  Library Distribution
                 </CardTitle>
-                <CardDescription>Document density by category</CardDescription>
+                <CardDescription>Density by category</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8 flex flex-col items-center justify-center">
                 {categoryStats.length > 0 ? (
@@ -220,74 +218,65 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="flex flex-col items-center justify-center space-y-3 text-zinc-400">
                     <FileText className="h-12 w-12 opacity-20" />
-                    <p className="text-sm italic">Categorization data pending...</p>
+                    <p className="text-sm italic">Synchronizing library data...</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Live Audit Log */}
-            <Card className="lg:col-span-3 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
-                    <Bell className="h-6 w-6 text-primary" />
-                    Live Activity Ledger
-                  </CardTitle>
-                  <CardDescription>Real-time stream of authenticated system events</CardDescription>
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
+                  <Bell className="h-6 w-6 text-primary" />
+                  Institutional Ledger
+                </CardTitle>
+                <CardDescription>Real-time system events</CardDescription>
+              </div>
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            </CardHeader>
+            <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+              {logsLoading ? (
+                <div className="p-20 flex justify-center">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              </CardHeader>
-              <CardContent className="p-0 max-h-[400px] overflow-y-auto">
-                {logsLoading ? (
-                  <div className="p-20 flex justify-center">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                  </div>
-                ) : (
-                  <div className="divide-y divide-zinc-50">
-                    {logs?.slice(0, 10).map((log) => (
-                      <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
-                        <div className="flex items-center gap-6">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                            log.actionType === 'DOCUMENT_UPLOAD' ? "bg-blue-50 text-blue-600" :
-                            log.actionType === 'DOCUMENT_DOWNLOAD' ? "bg-emerald-50 text-emerald-600" :
-                            log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" : "bg-purple-50 text-purple-600"
-                          )}>
-                            {log.actionType === 'DOCUMENT_UPLOAD' ? <Plus className="h-5 w-5" /> :
-                             log.actionType === 'DOCUMENT_DOWNLOAD' ? <Download className="h-5 w-5" /> :
-                             log.actionType === 'LOGIN' ? <Users className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                              {log.actionType.replace(/_/g, ' ')}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1 font-medium">{log.details}</p>
-                          </div>
+              ) : (
+                <div className="divide-y divide-zinc-50">
+                  {logs?.map((log) => (
+                    <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
+                      <div className="flex items-center gap-6">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                          log.actionType === 'DOCUMENT_UPLOAD' ? "bg-blue-50 text-blue-600" :
+                          log.actionType === 'DOCUMENT_DOWNLOAD' ? "bg-emerald-50 text-emerald-600" :
+                          log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" : "bg-purple-50 text-purple-600"
+                        )}>
+                          {log.actionType === 'DOCUMENT_UPLOAD' ? <Plus className="h-5 w-5" /> :
+                           log.actionType === 'DOCUMENT_DOWNLOAD' ? <Download className="h-5 w-5" /> :
+                           log.actionType === 'LOGIN' ? <Users className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
-                            {format(new Date(log.timestamp), 'hh:mm a')}
-                          </span>
-                          <span className="text-[10px] text-zinc-300 font-medium">
-                            {format(new Date(log.timestamp), 'MMM dd, yyyy')}
-                          </span>
+                        <div>
+                          <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
+                            {log.actionType.replace(/_/g, ' ')}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 font-medium">{log.details}</p>
                         </div>
                       </div>
-                    ))}
-                    {logs?.length === 0 && (
-                      <div className="p-20 text-center flex flex-col items-center">
-                        <Bell className="h-12 w-12 text-zinc-100 mb-4" />
-                        <p className="text-muted-foreground font-medium italic">Quiet as a library. No logs recorded yet.</p>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
+                          {format(new Date(log.timestamp), 'hh:mm a')}
+                        </span>
+                        <span className="text-[10px] text-zinc-300 font-medium">
+                          {format(new Date(log.timestamp), 'MMM dd, yyyy')}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <AnnouncementDialog 

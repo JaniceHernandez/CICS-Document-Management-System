@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useUser, initiateGoogleSignIn, initiateEmailSignIn } from '@/firebase';
+import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -31,42 +32,28 @@ export default function LoginPage() {
       if (user && firestore) {
         const userEmail = user.email || '';
         
-        // ADMIN FLOW
         if (targetRole === 'admin') {
-          // Check if user is the designated admin email OR already has an admin role
-          const isAdminEmail = userEmail === 'admin@neu.edu.ph';
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
 
-          if (isAdminEmail || adminSnap.exists()) {
-            // Provision/Update admin records
-            if (isAdminEmail && !adminSnap.exists()) {
-              setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
-            }
-
-            setDocumentNonBlocking(doc(firestore, 'users', user.uid), {
-              id: user.uid,
-              email: userEmail,
-              fullName: user.displayName || 'Administrator',
-              role: 'Admin',
-              status: 'active',
-              lastLoginAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }, { merge: true });
-            
-            router.push('/admin/dashboard');
-          } else {
-            toast({
-              title: "Access Denied",
-              description: "Your account does not have administrative privileges.",
-              variant: "destructive"
-            });
-            await auth.signOut();
-            setIsAuthenticating(false);
+          // In this prototype, we provision adminRole if they logged in via the admin portal with valid credentials
+          if (!adminSnap.exists()) {
+             setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
           }
-        } 
-        // STUDENT FLOW
-        else {
+
+          setDocumentNonBlocking(doc(firestore, 'users', user.uid), {
+            id: user.uid,
+            email: userEmail,
+            fullName: user.displayName || 'Administrator',
+            role: 'Admin',
+            status: 'active',
+            lastLoginAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          
+          router.push('/admin/dashboard');
+        } else {
+          // Student Flow
           if (userEmail.endsWith('@neu.edu.ph')) {
             const userProfileRef = doc(firestore, 'users', user.uid);
             
@@ -105,20 +92,12 @@ export default function LoginPage() {
 
   const handleAdminEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    
+    // Strict requirement for prototype admin credentials
+    if (email !== 'admin@neu.edu.ph' || password !== 'adminpassword') {
       toast({
-        title: "Missing Credentials",
-        description: "Please enter your administrative email and password.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Prototype requirement: Strict check for the master admin account
-    if (email === 'admin@neu.edu.ph' && password !== 'adminpassword') {
-      toast({
-        title: "Invalid Password",
-        description: "The administrative password provided is incorrect.",
+        title: "Access Denied",
+        description: "Invalid administrator credentials.",
         variant: "destructive"
       });
       return;
@@ -126,11 +105,21 @@ export default function LoginPage() {
 
     setIsAuthenticating(true);
     try {
-      await initiateEmailSignIn(auth, email, password);
+      // Attempt to sign in
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (signInError: any) {
+        // If user not found, create it for the prototype
+        if (signInError.code === 'auth/user-not-found') {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw signInError;
+        }
+      }
     } catch (error: any) {
       toast({
-        title: "Login Failed",
-        description: error.message || "An error occurred during sign in.",
+        title: "Authentication Error",
+        description: error.message || "Failed to log in as administrator.",
         variant: "destructive"
       });
       setIsAuthenticating(false);
@@ -179,7 +168,7 @@ export default function LoginPage() {
             </CardTitle>
             <CardDescription className="text-base">
               {targetRole === 'admin' 
-                ? 'Authorized personnel only. Use your admin credentials.' 
+                ? 'Authorized personnel only. Enter admin credentials.' 
                 : 'Sign in with your @neu.edu.ph account.'}
             </CardDescription>
           </CardHeader>
@@ -188,7 +177,7 @@ export default function LoginPage() {
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Administrative Email</Label>
+                  <Label htmlFor="email">Admin Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -243,7 +232,7 @@ export default function LoginPage() {
                 {isAuthenticating ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                    Verifying Identity...
+                    Verifying...
                   </>
                 ) : (
                   <>
@@ -253,14 +242,6 @@ export default function LoginPage() {
                 )}
               </Button>
             )}
-            
-            <div className="mt-8 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-              <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                {targetRole === 'admin' 
-                  ? 'Administrative accounts require pre-authorization. Domain restrictions apply.'
-                  : 'Domain validation is active. Non-institutional accounts will be automatically rejected.'}
-              </p>
-            </div>
           </CardContent>
           
           <CardFooter className="bg-zinc-50/50 p-6 flex justify-center border-t">
