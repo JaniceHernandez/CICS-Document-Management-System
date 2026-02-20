@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { Users, FileText, Download, TrendingUp, AlertCircle, FilePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const downloadData = [
   { name: 'Mon', downloads: 120 },
@@ -156,5 +157,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-import { cn } from '@/lib/utils';

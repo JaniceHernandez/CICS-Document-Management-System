@@ -34,7 +34,7 @@ interface DocumentDialogProps {
 }
 
 export function DocumentDialog({ open, onOpenChange, document: editDoc }: DocumentDialogProps) {
-  const { firestore } = useFirestore();
+  const firestore = useFirestore();
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   
@@ -45,9 +45,9 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
 
-  // Fetch Categories and Programs for selection
-  const categoriesQuery = useMemoFirebase(() => collection(firestore!, 'categories'), [firestore]);
-  const programsQuery = useMemoFirebase(() => collection(firestore!, 'programs'), [firestore]);
+  // Fetch Categories and Programs with safety checks
+  const categoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'categories') : null, [firestore]);
+  const programsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'programs') : null, [firestore]);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 

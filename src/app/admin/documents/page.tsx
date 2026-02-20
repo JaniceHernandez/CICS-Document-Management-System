@@ -13,8 +13,6 @@ import {
   Trash2, 
   Edit, 
   ExternalLink,
-  CheckCircle2,
-  Clock,
   Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -36,23 +34,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { DocumentDialog } from '@/components/admin/document-dialog';
 import { logActivity } from '@/lib/activity-logging';
 import { cn } from '@/lib/utils';
 
 export default function DocumentManagement() {
-  const { firestore } = useFirestore();
+  const firestore = useFirestore();
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<any>(null);
 
-  // Firestore Queries
-  const docsQuery = useMemoFirebase(() => collection(firestore!, 'documents'), [firestore]);
-  const categoriesQuery = useMemoFirebase(() => collection(firestore!, 'categories'), [firestore]);
-  const programsQuery = useMemoFirebase(() => collection(firestore!, 'programs'), [firestore]);
+  // Firestore Queries with safety checks
+  const docsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'documents') : null, [firestore]);
+  const categoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'categories') : null, [firestore]);
+  const programsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'programs') : null, [firestore]);
 
   const { data: documents, isLoading } = useCollection(docsQuery);
   const { data: categories } = useCollection(categoriesQuery);
