@@ -51,7 +51,7 @@ export default function DocumentManagement() {
   const [editingDoc, setEditingDoc] = useState<any>(null);
 
   // Real-time Firestore Streams
-  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const documentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
 
@@ -82,7 +82,7 @@ export default function DocumentManagement() {
 
   const getProgramCodes = (progIds: string[]) => {
     if (!progIds || progIds.length === 0) return 'All Programs';
-    return progIds.map(id => programs?.find(p => p.id === id)?.shortCode).filter(Boolean).join(', ');
+    return progIds.map(id => programs?.find(p => p.id === id)?.shortCode).join(', ');
   };
 
   // Metrics
