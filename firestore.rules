@@ -58,8 +58,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get, list: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow create, update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
@@ -69,8 +68,8 @@ service cloud.firestore {
     match /adminRoles/{adminId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isOwner(adminId); // Fixed for prototyping: Allow self-creation
-      allow update, delete: if false; 
+      allow create, update: if isOwner(adminId); // Fixed for prototyping: Allow self-provisioning and updates
+      allow delete: if false; 
     }
 
     /**
