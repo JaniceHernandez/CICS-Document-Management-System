@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,15 +10,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, GraduationCap, ArrowLeft, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebase, useUser, initiateAnonymousSignIn, initiateEmailSignIn } from '@/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { auth } = useFirebase();
+  const { user } = useUser();
   const defaultRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Redirect if user signs in
+  useEffect(() => {
+    if (user) {
+      const role = searchParams.get('role');
+      if (role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/student/documents');
+      }
+    }
+  }, [user, router, searchParams]);
 
   const handleLogin = (role: 'student' | 'admin') => {
     setIsLoading(true);
@@ -34,16 +50,13 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
       }
+      // For the prototype, we use anonymous sign-in to represent a successful Google Auth
+      initiateAnonymousSignIn(auth);
+    } else {
+      // In a real app, you'd use initiateEmailSignIn with real creds
+      // For prototyping, we can use anonymous or specific admin email/pw if set up
+      initiateEmailSignIn(auth, email || 'admin@cics.hub', password || 'password123');
     }
-
-    setTimeout(() => {
-      setIsLoading(false);
-      if (role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/student/documents');
-      }
-    }, 1000);
   };
 
   return (
@@ -121,11 +134,22 @@ export default function LoginPage() {
               <CardContent className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="admin-email">Email</Label>
-                  <Input id="admin-email" type="email" placeholder="admin@cics.hub" />
+                  <Input 
+                    id="admin-email" 
+                    type="email" 
+                    placeholder="admin@cics.hub" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="admin-password">Password</Label>
-                  <Input id="admin-password" type="password" />
+                  <Input 
+                    id="admin-password" 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 <Button 
                   className="w-full bg-zinc-900 text-white h-12 rounded-xl font-bold" 

@@ -47,10 +47,10 @@ export default function DocumentManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<any>(null);
 
-  // Firestore Queries with safety checks
-  const docsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'documents') : null, [firestore]);
-  const categoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'categories') : null, [firestore]);
-  const programsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'programs') : null, [firestore]);
+  // Firestore Queries - Only run when both firestore and user are available
+  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
 
   const { data: documents, isLoading } = useCollection(docsQuery);
   const { data: categories } = useCollection(categoriesQuery);
@@ -196,10 +196,10 @@ export default function DocumentManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {filteredDocs?.length === 0 && (
+                      {!isLoading && filteredDocs?.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                            No documents found matching your search.
+                            {user ? 'No documents found matching your search.' : 'Please sign in to view documents.'}
                           </TableCell>
                         </TableRow>
                       )}

@@ -45,9 +45,9 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
 
-  // Fetch Categories and Programs with safety checks
-  const categoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'categories') : null, [firestore]);
-  const programsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'programs') : null, [firestore]);
+  // Fetch Categories and Programs - Only run when both firestore and user are available
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
