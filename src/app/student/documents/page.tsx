@@ -4,15 +4,13 @@ import { useState } from 'react';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Search, 
-  Filter, 
   FileText, 
   Download, 
   Eye, 
   Sparkles,
-  ChevronRight,
   Loader2,
   X
 } from 'lucide-react';
@@ -33,29 +31,33 @@ import {
 } from "@/components/ui/dialog";
 import { summarizeDocument } from '@/ai/flows/summarize-document';
 import { useToast } from '@/hooks/use-toast';
-
-const MOCK_DOCS = [
-  { id: 1, title: 'BSIT Program Checklist 2024', category: 'Checklists', program: 'BSIT', date: '2024-01-15', downloads: 450 },
-  { id: 2, title: 'University Academic Calendar', category: 'General', program: 'All', date: '2023-12-01', downloads: 1200 },
-  { id: 3, title: 'Student Code of Conduct', category: 'Policies', program: 'All', date: '2023-08-20', downloads: 850 },
-  { id: 4, title: 'CS Elective Guidelines', category: 'Guidelines', program: 'BSCS', date: '2024-02-10', downloads: 230 },
-  { id: 5, title: 'Laboratory Safety Manual', category: 'Guidelines', program: 'All', date: '2023-09-05', downloads: 560 },
-  { id: 6, title: 'Internship Requirements v2', category: 'Forms', program: 'BSIT', date: '2024-02-28', downloads: 340 },
-];
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export default function StudentDocuments() {
+  const firestore = useFirestore();
+  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProgram, setSelectedProgram] = useState('all');
-  const [previewDoc, setPreviewDoc] = useState<typeof MOCK_DOCS[0] | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const filteredDocs = MOCK_DOCS.filter(doc => {
+  // Firestore Queries
+  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+
+  const { data: documents, isLoading } = useCollection(docsQuery);
+  const { data: categories } = useCollection(categoriesQuery);
+  const { data: programs } = useCollection(programsQuery);
+
+  const filteredDocs = documents?.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || doc.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesProgram = selectedProgram === 'all' || doc.program.toLowerCase() === selectedProgram.toLowerCase();
+    const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
+    const matchesProgram = selectedProgram === 'all' || doc.programIds?.includes(selectedProgram);
     return matchesSearch && matchesCategory && matchesProgram;
   });
 
@@ -64,9 +66,9 @@ export default function StudentDocuments() {
     setIsSummarizing(true);
     setSummary(null);
     try {
-      // Simulation of PDF Data URI for the flow
-      const mockPdfDataUri = "data:application/pdf;base64,JVBERi0xLjQKJ..." 
-      const result = await summarizeDocument({ pdfDataUri: mockPdfDataUri });
+      // In a real app, you'd fetch the PDF and convert to base64
+      // For this prototype, we'll use a placeholder or the actual flow with mock data if needed
+      const result = await summarizeDocument({ pdfDataUri: "data:application/pdf;base64,JVBERi0xLjQKJ..." });
       setSummary(result.summary);
     } catch (error) {
       toast({
@@ -79,6 +81,8 @@ export default function StudentDocuments() {
     }
   };
 
+  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav role="student" />
@@ -90,107 +94,127 @@ export default function StudentDocuments() {
               <h1 className="text-3xl font-headline font-bold text-primary">CICS Document Library</h1>
               <p className="text-muted-foreground">Search and access official academic resources.</p>
             </div>
-            <div className="flex gap-2 bg-primary/5 p-2 rounded-2xl items-center">
+            <div className="flex gap-2 bg-primary/5 p-2 rounded-2xl items-center border border-primary/10">
               <Sparkles className="h-5 w-5 text-secondary animate-pulse" />
               <span className="text-sm font-medium text-primary">AI Summarization Enabled</span>
             </div>
           </header>
 
-          <Card className="border-none shadow-sm rounded-2xl">
+          <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
                     placeholder="Search documents by name or keyword..." 
-                    className="pl-10 h-11 rounded-xl bg-background"
+                    className="pl-10 h-11 rounded-xl bg-background border-zinc-200"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background">
+                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="checklists">Checklists</SelectItem>
-                    <SelectItem value="policies">Policies</SelectItem>
-                    <SelectItem value="guidelines">Guidelines</SelectItem>
-                    <SelectItem value="forms">Forms</SelectItem>
+                    {categories?.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background">
+                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
                     <SelectValue placeholder="Program" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Programs</SelectItem>
-                    <SelectItem value="bsit">BSIT</SelectItem>
-                    <SelectItem value="bscs">BSCS</SelectItem>
-                    <SelectItem value="bsis">BSIS</SelectItem>
+                    {programs?.map(prog => (
+                      <SelectItem key={prog.id} value={prog.id}>{prog.shortCode}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredDocs.map((doc) => (
-              <Card key={doc.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all">
-                <CardHeader className="p-6 pb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-full px-3">
-                      {doc.category}
-                    </Badge>
-                    <Badge variant="outline" className="border-primary/20 text-primary font-bold">
-                      {doc.program}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
-                    {doc.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 pt-2">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center gap-1">
-                      <Download className="h-4 w-4" />
-                      {doc.downloads} downloads
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground">Loading academic documents...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredDocs?.map((doc) => (
+                <Card key={doc.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
+                  <CardHeader className="p-6 pb-2">
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
+                        {getCategoryName(doc.categoryId)}
+                      </Badge>
+                      <div className="flex gap-1">
+                        {doc.programIds?.map((pid: string) => (
+                          <Badge key={pid} variant="outline" className="border-primary/20 text-primary text-[10px] h-5">
+                            {programs?.find(p => p.id === pid)?.shortCode}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <FileText className="h-4 w-4" />
-                      PDF
+                    <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
+                      {doc.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-2">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                      <div className="flex items-center gap-1">
+                        <Download className="h-4 w-4" />
+                        {doc.downloadCount || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FileText className="h-4 w-4" />
+                        PDF
+                      </div>
+                      <div className="text-xs">
+                        {new Date(doc.uploadDate).toLocaleDateString()}
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                      variant="outline" 
-                      className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white"
-                      onClick={() => setPreviewDoc(doc)}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Preview
-                    </Button>
-                    <Button 
-                      className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
+                        onClick={() => setPreviewDoc(doc)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </Button>
+                      <Button 
+                        className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
+                        asChild
+                      >
+                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredDocs.length === 0 && (
+          {!isLoading && filteredDocs?.length === 0 && (
             <div className="text-center py-20 space-y-4">
               <div className="bg-zinc-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-zinc-400">
                 <Search className="h-10 w-10" />
               </div>
               <h3 className="text-xl font-headline font-bold">No documents found</h3>
               <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
-              <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setSelectedProgram('all'); }}>
+              <Button 
+                variant="outline" 
+                className="rounded-full"
+                onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setSelectedProgram('all'); }}
+              >
                 Clear all filters
               </Button>
             </div>
@@ -200,69 +224,76 @@ export default function StudentDocuments() {
 
       {/* Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) { setPreviewDoc(null); setSummary(null); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
           <DialogHeader className="p-6 bg-primary text-white">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
                 <DialogDescription className="text-white/70">
-                  Last updated {previewDoc?.date} • {previewDoc?.program}
+                  Uploaded on {previewDoc && new Date(previewDoc.uploadDate).toLocaleDateString()}
                 </DialogDescription>
               </div>
-              <Button variant="ghost" className="text-white hover:bg-white/20" onClick={() => setPreviewDoc(null)}>
+              <Button variant="ghost" className="text-white hover:bg-white/20 h-10 w-10 p-0" onClick={() => setPreviewDoc(null)}>
                 <X className="h-6 w-6" />
               </Button>
             </div>
           </DialogHeader>
           
-          <div className="flex-1 flex flex-col md:flex-row h-full">
+          <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
             {/* Simulation of PDF Preview */}
             <div className="flex-1 bg-zinc-800 flex flex-col items-center justify-center text-white p-12 min-h-[400px]">
               <FileText className="h-24 w-24 opacity-20 mb-4" />
               <p className="text-center font-medium">Official PDF Viewer Simulation</p>
-              <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">In a production environment, this area would render the actual PDF document for viewing.</p>
-              <Button className="mt-8 bg-white text-primary hover:bg-zinc-100">
-                Open in New Tab
+              <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">In production, this renders the actual document.</p>
+              <Button className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" asChild>
+                <a href={previewDoc?.fileUrl} target="_blank" rel="noopener noreferrer">
+                  Open Original File
+                </a>
               </Button>
             </div>
 
             {/* AI Summary Panel */}
-            <div className="w-full md:w-80 bg-background border-l p-6 overflow-y-auto">
+            <div className="w-full md:w-96 bg-background border-l p-6 overflow-y-auto">
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-primary font-bold">
-                  <Sparkles className="h-5 w-5" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
                   AI Assistant
                 </div>
                 
                 <div className="space-y-4">
-                  <p className="text-sm font-medium">Quick Summary</p>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Document Insights</p>
                   {isSummarizing ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                      <p className="text-xs text-muted-foreground text-center">Reading document and generating highlights...</p>
+                    <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-primary/5 rounded-2xl border border-dashed border-primary/20">
+                      <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                      <p className="text-xs text-primary font-medium text-center px-4">Analyzing content and extracting key takeaways...</p>
                     </div>
                   ) : summary ? (
-                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                    <div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 shadow-sm">
                       <p className="text-sm text-primary leading-relaxed">{summary}</p>
                     </div>
                   ) : (
-                    <div className="bg-muted p-6 rounded-xl text-center space-y-3">
-                      <p className="text-xs text-muted-foreground italic">Need a quick overview of this document?</p>
+                    <div className="bg-zinc-50 p-8 rounded-2xl text-center space-y-4 border border-zinc-100">
+                      <p className="text-xs text-muted-foreground italic">Short on time? Let our AI summarize this document for you instantly.</p>
                       <Button 
                         onClick={handleSummarize}
-                        className="w-full bg-primary text-white text-xs h-9 rounded-lg"
+                        className="w-full bg-primary text-white rounded-xl font-bold h-11"
                       >
-                        Generate Summary
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Summarize Now
                       </Button>
                     </div>
                   )}
                 </div>
 
                 <div className="pt-6 border-t space-y-4">
-                  <p className="text-sm font-medium">Actions</p>
-                  <Button className="w-full bg-secondary text-primary font-bold h-11 rounded-xl">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Available Actions</p>
+                  <Button className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" asChild>
+                    <a href={previewDoc?.fileUrl} target="_blank" rel="noopener noreferrer">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download for Offline
+                    </a>
                   </Button>
                 </div>
               </div>
