@@ -6,15 +6,16 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  UserCredential,
 } from 'firebase/auth';
 
-/** Initiate Google sign-in (non-blocking). */
-export function initiateGoogleSignIn(authInstance: Auth): void {
+/** 
+ * Initiate Google sign-in.
+ * Returns the promise to allow callers to manage UI states and handle errors gracefully.
+ */
+export function initiateGoogleSignIn(authInstance: Auth): Promise<UserCredential> {
   const provider = new GoogleAuthProvider();
-  // We don't await here to keep it non-blocking as per project patterns
-  signInWithPopup(authInstance, provider).catch((error) => {
-    console.error("Google Sign-In failed:", error);
-  });
+  return signInWithPopup(authInstance, provider);
 }
 
 /** Initiate anonymous sign-in (non-blocking). */

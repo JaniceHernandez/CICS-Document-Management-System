@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -85,9 +84,22 @@ export default function LoginPage() {
     handleAuthFlow();
   }, [user, firestore, targetRole, router, auth, toast]);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
-    initiateGoogleSignIn(auth);
+    try {
+      await initiateGoogleSignIn(auth);
+    } catch (error: any) {
+      // Don't show an error toast if the user simply closed the popup
+      if (error.code !== 'auth/popup-closed-by-user') {
+        toast({
+          title: "Authentication Failed",
+          description: error.message || "Failed to sign in with Google.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const handleAdminEmailLogin = async (e: React.FormEvent) => {
@@ -159,7 +171,7 @@ export default function LoginPage() {
                 </div>
               ) : (
                 <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                  <GraduationCap className="h-8 w-8" />
+                  < GraduationCap className="h-8 w-8" />
                 </div>
               )}
             </div>
