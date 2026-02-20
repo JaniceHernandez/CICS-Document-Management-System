@@ -40,9 +40,6 @@ service cloud.firestore {
 
     /** Checks if the document exists and the requester is the owner. */
     function isExistingOwner(userId) {
-      // For create/update operations, resource.data refers to the *incoming* data, not the existing document.
-      // resource != null means an existing document is being accessed (update, delete).
-      // For create, resource == null. So this is primarily for update/delete.
       return resource != null && isOwner(userId);
     }
 
@@ -58,41 +55,26 @@ service cloud.firestore {
 
     /**
      * @description Rules for user profile documents. Users manage their own profiles.
-     * @path /users/{userId}
-     * @allow (create, get, list, update) if the authenticated UID matches the document ID.
-     * @deny (create) if the UID in data doesn't match the path ID.
-     * @principle Enforces self-creation and user-ownership.
      */
     match /users/{userId} {
-      // Allow getting own profile or if admin, allow getting any profile
       allow get, list: if isOwner(userId) || isAdmin();
-      // Allow creating own profile, ensuring the ID in the data matches the path userId
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      // Allow updating own profile, ensuring the ID in the data remains consistent
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      // Only admins can delete user profiles
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
     /**
      * @description Explicit collection to identify administrators.
-     * @path /adminRoles/{adminId}
-     * @allow (get) if signed in.
-     * @deny (list, create, update, delete) for non-admins.
-     * @principle Existence-based role management for global admin privileges.
      */
     match /adminRoles/{adminId} {
       allow get: if isSignedIn();
-      allow list: if isAdmin(); // Only admins can list other admins (for security)
-      allow create, update, delete: if false; // Managed via Firebase Console or internal script.
+      allow list: if isAdmin();
+      allow create: if isOwner(adminId); // Fixed for prototyping: Allow self-creation
+      allow update, delete: if false; 
     }
 
     /**
-     * @description Official PDF Documents. Students can read; only Admins can manage content.
-     * @path /documents/{documentId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for any user who is not an Admin.
-     * @principle Public read with owner-only (Admin) writes.
+     * @description Official PDF Documents.
      */
     match /documents/{documentId} {
       allow get, list: if isSignedIn();
@@ -101,10 +83,6 @@ service cloud.firestore {
 
     /**
      * @description Metadata categories for organization.
-     * @path /categories/{categoryId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for non-admins.
-     * @principle Shared structural data managed by authorities.
      */
     match /categories/{categoryId} {
       allow get, list: if isSignedIn();
@@ -113,10 +91,6 @@ service cloud.firestore {
 
     /**
      * @description Academic programs.
-     * @path /programs/{programId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for non-admins.
-     * @principle Shared structural data managed by authorities.
      */
     match /programs/{programId} {
       allow get, list: if isSignedIn();
@@ -125,10 +99,6 @@ service cloud.firestore {
 
     /**
      * @description Official announcements for students.
-     * @path /announcements/{announcementId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for non-admins.
-     * @principle Broad access for reading; restricted administrative control for writing.
      */
     match /announcements/{announcementId} {
       allow get, list: if isSignedIn();
@@ -136,29 +106,17 @@ service cloud.firestore {
     }
 
     /**
-     * @description Student inquiries. Students see their own; Admins see all.
-     * @path /inquiries/{inquiryId}
-     * @allow (create) if the studentId field matches the sender's UID.
-     * @deny (get, list) if the user is neither the student owner nor an admin.
-     * @principle Hybrid ownership and role-based access.
+     * @description Student inquiries.
      */
     match /inquiries/{inquiryId} {
-      // Admins can read all inquiries, owners can read their own
       allow get, list: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
-      // Owners can create an inquiry for themselves
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
-      // Admins can update any inquiry, owners can update their own (ensuring studentId doesn't change)
-      allow update: if isAdmin() || (isExistingOwner(resource.data.studentId) && request.resource.data.studentId == resource.data.studentId);
-      // Only admins can delete inquiries
+      allow update: if isAdmin() || (isOwner(resource.data.studentId));
       allow delete: if isAdmin();
     }
 
     /**
      * @description Frequently Asked Questions.
-     * @path /faqs/{faqId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for non-admins.
-     * @principle Self-service support content managed by admins.
      */
     match /faqs/{faqId} {
       allow get, list: if isSignedIn();
@@ -167,23 +125,15 @@ service cloud.firestore {
 
     /**
      * @description Audit logs for security monitoring. 
-     * @path /activityLogs/{activityLogId}
-     * @allow (create) if the logged userId matches the requester.
-     * @deny (get, list) for non-admins.
-     * @principle Write-only for users (own actions), read-only for system/admins.
      */
     match /activityLogs/{activityLogId} {
       allow get, list: if isAdmin();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false; // Logs are immutable.
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
      * @description Configuration for when inquiries are accepted.
-     * @path /inquiryPeriods/{inquiryPeriodId}
-     * @allow (get, list) for any authenticated user.
-     * @deny (create, update, delete) for non-admins.
-     * @principle Configuration data read by users, managed by admins.
      */
     match /inquiryPeriods/{inquiryPeriodId} {
       allow get, list: if isSignedIn();

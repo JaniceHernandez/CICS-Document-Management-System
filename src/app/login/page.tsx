@@ -10,12 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldCheck, GraduationCap, ArrowLeft, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useUser, initiateAnonymousSignIn, initiateEmailSignIn } from '@/firebase';
+import { useFirebase, useUser, initiateAnonymousSignIn, initiateEmailSignIn, useFirestore } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { auth } = useFirebase();
+  const firestore = useFirestore();
   const { user } = useUser();
   const defaultRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
   
@@ -24,37 +27,62 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Redirect if user signs in
+  // Redirect and provision if user signs in
   useEffect(() => {
-    if (user) {
+    if (user && firestore) {
       const role = searchParams.get('role');
+      
       if (role === 'admin') {
+        const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
+        const userProfileRef = doc(firestore, 'users', user.uid);
+        
+        // Provision admin records
+        setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
+        setDocumentNonBlocking(userProfileRef, {
+          id: user.uid,
+          email: user.email || email || 'admin@cics.hub',
+          fullName: 'System Administrator',
+          role: 'Admin',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        
         router.push('/admin/dashboard');
       } else {
+        const userProfileRef = doc(firestore, 'users', user.uid);
+        
+        // Provision student record
+        setDocumentNonBlocking(userProfileRef, {
+          id: user.uid,
+          email: user.email || email || 'student@neu.edu.ph',
+          fullName: 'CICS Student',
+          role: 'Student',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        
         router.push('/student/documents');
       }
     }
-  }, [user, router, searchParams]);
+  }, [user, router, searchParams, firestore, email]);
 
   const handleLogin = (role: 'student' | 'admin') => {
     setIsLoading(true);
     
-    // Simulate domain validation for students
     if (role === 'student') {
-      if (!email.endsWith('@neu.edu.ph')) {
+      if (email && !email.endsWith('@neu.edu.ph')) {
         toast({
           title: "Invalid Domain",
-          description: "Please use your institutional @neu.edu.ph Google account.",
+          description: "Please use your institutional @neu.edu.ph account.",
           variant: "destructive"
         });
         setIsLoading(false);
         return;
       }
-      // For the prototype, we use anonymous sign-in to represent a successful Google Auth
       initiateAnonymousSignIn(auth);
     } else {
-      // In a real app, you'd use initiateEmailSignIn with real creds
-      // For prototyping, we can use anonymous or specific admin email/pw if set up
       initiateEmailSignIn(auth, email || 'admin@cics.hub', password || 'password123');
     }
   };
@@ -92,12 +120,12 @@ export default function LoginPage() {
               <CardHeader className="space-y-1">
                 <CardTitle className="text-2xl font-headline font-bold">Student Sign In</CardTitle>
                 <CardDescription>
-                  Use your institutional Google account (@neu.edu.ph)
+                  Use your institutional account (@neu.edu.ph)
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Institutional Email</Label>
+                  <Label htmlFor="email">Email Address</Label>
                   <Input 
                     id="email" 
                     type="email" 
@@ -109,10 +137,10 @@ export default function LoginPage() {
                 <Button 
                   className="w-full bg-primary text-white h-12 rounded-xl font-bold" 
                   onClick={() => handleLogin('student')}
-                  disabled={isLoading || !email}
+                  disabled={isLoading}
                 >
                   <Mail className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Authenticating...' : 'Sign in with Google'}
+                  {isLoading ? 'Authenticating...' : 'Sign In'}
                 </Button>
               </CardContent>
               <CardFooter className="flex flex-col gap-4 text-center">

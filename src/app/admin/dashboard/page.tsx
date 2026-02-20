@@ -13,9 +13,11 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { Users, FileText, Download, TrendingUp, AlertCircle, FilePlus } from 'lucide-react';
+import { Users, FileText, Download, TrendingUp, AlertCircle, FilePlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 const downloadData = [
   { name: 'Mon', downloads: 120 },
@@ -36,6 +38,41 @@ const categoryData = [
 ];
 
 export default function AdminDashboard() {
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+
+  // Guard: Only fetch data when we have a user and we know they should be an admin
+  const activityLogsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(5));
+  }, [firestore, user]);
+
+  const studentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, 'users');
+  }, [firestore, user]);
+
+  const documentsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return collection(firestore, 'documents');
+  }, [firestore, user]);
+
+  const { data: recentLogs, isLoading: logsLoading } = useCollection(activityLogsQuery);
+  const { data: allUsers } = useCollection(studentsQuery);
+  const { data: allDocs } = useCollection(documentsQuery);
+
+  const studentCount = allUsers?.filter(u => u.role === 'Student').length || 0;
+  const docCount = allDocs?.length || 0;
+  const totalDownloads = allDocs?.reduce((acc, d) => acc + (d.downloadCount || 0), 0) || 0;
+
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav role="admin" />
@@ -55,10 +92,10 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { label: 'Total Students', value: '1,248', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Documents Hosted', value: '163', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50' },
-              { label: 'Total Downloads', value: '8.4k', icon: Download, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Active Inquiries', value: '14', icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: 'Total Students', value: studentCount.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Documents Hosted', value: docCount.toString(), icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Total Downloads', value: totalDownloads.toString(), icon: Download, color: 'text-green-600', bg: 'bg-green-50' },
+              { label: 'System Health', value: '100%', icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map((stat) => (
               <Card key={stat.label} className="border-none shadow-sm rounded-2xl">
                 <CardContent className="p-6 flex items-center justify-between">
@@ -128,28 +165,31 @@ export default function AdminDashboard() {
               <CardDescription>Latest system-wide events and audit trails</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y">
-                {[
-                  { user: 'Admin Sarah', action: 'Uploaded "BSIT Checklist v2.pdf"', time: '2 mins ago', role: 'Admin' },
-                  { user: 'Juan Dela Cruz', action: 'Downloaded "University Handbook.pdf"', time: '15 mins ago', role: 'Student' },
-                  { user: 'Admin Mike', action: 'Blocked account "test.user@neu.edu.ph"', time: '1 hour ago', role: 'Admin' },
-                  { user: 'Maria Santos', action: 'Submitted new inquiry', time: '3 hours ago', role: 'Student' },
-                ].map((log, i) => (
-                  <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        log.role === 'Admin' ? "bg-primary" : "bg-secondary"
-                      )} />
-                      <div>
-                        <p className="text-sm font-bold">{log.user}</p>
-                        <p className="text-sm text-muted-foreground">{log.action}</p>
+              {logsLoading ? (
+                <div className="p-12 flex justify-center">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {recentLogs?.map((log) => (
+                    <div key={log.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        <div>
+                          <p className="text-sm font-bold">{log.actionType}</p>
+                          <p className="text-sm text-muted-foreground">{log.details}</p>
+                        </div>
                       </div>
+                      <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{log.time}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {recentLogs?.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No recent activity found.
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
