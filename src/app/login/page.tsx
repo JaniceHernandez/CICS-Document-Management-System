@@ -1,24 +1,28 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useUser, initiateGoogleSignIn, useFirestore } from '@/firebase';
+import { useFirebase, useUser, initiateGoogleSignIn, initiateEmailSignIn } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { auth } = useFirebase();
-  const firestore = useFirestore();
+  const { auth, firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
   const targetRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
   
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { toast } = useToast();
 
@@ -52,7 +56,6 @@ export default function LoginPage() {
             
             router.push('/admin/dashboard');
           } else {
-            // Unauthorized admin attempt
             toast({
               title: "Access Denied",
               description: "Your account does not have administrative privileges.",
@@ -74,7 +77,7 @@ export default function LoginPage() {
               role: 'Student',
               status: 'active',
               lastLoginAt: new Date().toISOString(),
-              createdAt: new Date().toISOString(), // setDocument with merge handles this safely
+              createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true });
             
@@ -98,6 +101,40 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     setIsAuthenticating(true);
     initiateGoogleSignIn(auth);
+  };
+
+  const handleAdminEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please enter your administrative email and password.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Prototype requirement: Strict check for the master admin account
+    if (email === 'admin@neu.edu.ph' && password !== 'adminpassword') {
+      toast({
+        title: "Invalid Password",
+        description: "The administrative password provided is incorrect.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      await initiateEmailSignIn(auth, email, password);
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "An error occurred during sign in.",
+        variant: "destructive"
+      });
+      setIsAuthenticating(false);
+    }
   };
 
   if (isUserLoading) {
@@ -142,35 +179,86 @@ export default function LoginPage() {
             </CardTitle>
             <CardDescription className="text-base">
               {targetRole === 'admin' 
-                ? 'Authorized personnel only. Access is monitored.' 
+                ? 'Authorized personnel only. Use your admin credentials.' 
                 : 'Sign in with your @neu.edu.ph account.'}
             </CardDescription>
           </CardHeader>
           
           <CardContent className="px-10 pb-10">
-            <Button 
-              className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
-              onClick={handleGoogleLogin}
-              disabled={isAuthenticating}
-            >
-              {isAuthenticating ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                  Verifying Identity...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-5 w-5 mr-3" />
-                  Continue with Google
-                </>
-              )}
-            </Button>
+            {targetRole === 'admin' ? (
+              <form onSubmit={handleAdminEmailLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Administrative Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="email"
+                      type="email"
+                      placeholder="admin@neu.edu.ph"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 h-12 rounded-xl"
+                      disabled={isAuthenticating}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 h-12 rounded-xl"
+                      disabled={isAuthenticating}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button 
+                  type="submit"
+                  className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isAuthenticating}
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                      Authenticating...
+                    </>
+                  ) : (
+                    'Enter Dashboard'
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <Button 
+                className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                onClick={handleGoogleLogin}
+                disabled={isAuthenticating}
+              >
+                {isAuthenticating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                    Verifying Identity...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-5 w-5 mr-3" />
+                    Continue with Google
+                  </>
+                )}
+              </Button>
+            )}
             
             <div className="mt-8 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
               <p className="text-xs text-center text-muted-foreground leading-relaxed">
                 {targetRole === 'admin' 
-                  ? 'Administrative accounts require pre-authorization in the system core. Domain restrictions apply.'
-                  : 'Domain validation is active. Non-institutional accounts will be automatically rejected by security rules.'}
+                  ? 'Administrative accounts require pre-authorization. Domain restrictions apply.'
+                  : 'Domain validation is active. Non-institutional accounts will be automatically rejected.'}
               </p>
             </div>
           </CardContent>
