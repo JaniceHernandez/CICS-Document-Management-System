@@ -4,14 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShieldCheck, GraduationCap, ArrowLeft, Mail } from 'lucide-react';
+import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, useUser, initiateAnonymousSignIn, initiateEmailSignIn, useFirestore } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { useFirebase, useUser, initiateGoogleSignIn, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
@@ -19,182 +16,174 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { auth } = useFirebase();
   const firestore = useFirestore();
-  const { user } = useUser();
-  const defaultRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
+  const { user, isUserLoading } = useUser();
+  const targetRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
   
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { toast } = useToast();
 
-  // Redirect and provision if user signs in
   useEffect(() => {
-    if (user && firestore) {
-      const role = searchParams.get('role');
-      
-      if (role === 'admin') {
-        const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
-        const userProfileRef = doc(firestore, 'users', user.uid);
+    async function handleAuthFlow() {
+      if (user && firestore) {
+        const userEmail = user.email || '';
         
-        // Provision admin records
-        setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
-        setDocumentNonBlocking(userProfileRef, {
-          id: user.uid,
-          email: user.email || email || 'admin@cics.hub',
-          fullName: 'System Administrator',
-          role: 'Admin',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-        
-        router.push('/admin/dashboard');
-      } else {
-        const userProfileRef = doc(firestore, 'users', user.uid);
-        
-        // Provision student record
-        setDocumentNonBlocking(userProfileRef, {
-          id: user.uid,
-          email: user.email || email || 'student@neu.edu.ph',
-          fullName: 'CICS Student',
-          role: 'Student',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-        
-        router.push('/student/documents');
-      }
-    }
-  }, [user, router, searchParams, firestore, email]);
+        // ADMIN FLOW
+        if (targetRole === 'admin') {
+          // Check if user is the designated admin email OR already has an admin role
+          const isAdminEmail = userEmail === 'admin@neu.edu.ph';
+          const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
+          const adminSnap = await getDoc(adminRoleRef);
 
-  const handleLogin = (role: 'student' | 'admin') => {
-    setIsLoading(true);
-    
-    if (role === 'student') {
-      if (email && !email.endsWith('@neu.edu.ph')) {
-        toast({
-          title: "Invalid Domain",
-          description: "Please use your institutional @neu.edu.ph account.",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
+          if (isAdminEmail || adminSnap.exists()) {
+            // Provision/Update admin records
+            if (isAdminEmail && !adminSnap.exists()) {
+              setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
+            }
+
+            setDocumentNonBlocking(doc(firestore, 'users', user.uid), {
+              id: user.uid,
+              email: userEmail,
+              fullName: user.displayName || 'Administrator',
+              role: 'Admin',
+              status: 'active',
+              lastLoginAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            router.push('/admin/dashboard');
+          } else {
+            // Unauthorized admin attempt
+            toast({
+              title: "Access Denied",
+              description: "Your account does not have administrative privileges.",
+              variant: "destructive"
+            });
+            await auth.signOut();
+            setIsAuthenticating(false);
+          }
+        } 
+        // STUDENT FLOW
+        else {
+          if (userEmail.endsWith('@neu.edu.ph')) {
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            
+            setDocumentNonBlocking(userProfileRef, {
+              id: user.uid,
+              email: userEmail,
+              fullName: user.displayName || 'CICS Student',
+              role: 'Student',
+              status: 'active',
+              lastLoginAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(), // setDocument with merge handles this safely
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            router.push('/student/documents');
+          } else {
+            toast({
+              title: "Invalid Domain",
+              description: "Students must use an @neu.edu.ph institutional account.",
+              variant: "destructive"
+            });
+            await auth.signOut();
+            setIsAuthenticating(false);
+          }
+        }
       }
-      initiateAnonymousSignIn(auth);
-    } else {
-      initiateEmailSignIn(auth, email || 'admin@cics.hub', password || 'password123');
     }
+
+    handleAuthFlow();
+  }, [user, firestore, targetRole, router, auth, toast]);
+
+  const handleGoogleLogin = () => {
+    setIsAuthenticating(true);
+    initiateGoogleSignIn(auth);
   };
 
+  if (isUserLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors">
+    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
+      <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-medium">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Home
       </Link>
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-primary/20">
-            <ShieldCheck className="h-10 w-10 text-white" />
+          <div className="mx-auto w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/20 rotate-3">
+            <ShieldCheck className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-3xl font-headline font-bold text-primary">CICS Docs Hub</h1>
-          <p className="text-muted-foreground mt-2 font-body">Secure Portal Authentication</p>
+          <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">CICS Docs Hub</h1>
+          <p className="text-muted-foreground mt-2 font-body text-lg">Secure Institutional Access</p>
         </div>
 
-        <Tabs defaultValue={defaultRole} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8 p-1 bg-muted rounded-xl">
-            <TabsTrigger value="student" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              <GraduationCap className="h-4 w-4 mr-2" />
-              Student
-            </TabsTrigger>
-            <TabsTrigger value="admin" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Admin
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="student">
-            <Card className="border-none shadow-2xl rounded-2xl">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-headline font-bold">Student Sign In</CardTitle>
-                <CardDescription>
-                  Use your institutional account (@neu.edu.ph)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="student.name@neu.edu.ph" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+        <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="space-y-2 pb-8 pt-10 text-center">
+            <div className="flex justify-center mb-4">
+              {targetRole === 'admin' ? (
+                <div className="p-3 bg-zinc-900 rounded-2xl text-white">
+                  <ShieldCheck className="h-8 w-8" />
                 </div>
-                <Button 
-                  className="w-full bg-primary text-white h-12 rounded-xl font-bold" 
-                  onClick={() => handleLogin('student')}
-                  disabled={isLoading}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Authenticating...' : 'Sign In'}
-                </Button>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Only currently enrolled CICS students can access this portal. Access is automatically revoked upon graduation or blocking.
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="admin">
-            <Card className="border-none shadow-2xl rounded-2xl">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-headline font-bold">Admin Portal</CardTitle>
-                <CardDescription>
-                  Enter your secure credentials to manage the platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="admin-email">Email</Label>
-                  <Input 
-                    id="admin-email" 
-                    type="email" 
-                    placeholder="admin@cics.hub" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+              ) : (
+                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                  <GraduationCap className="h-8 w-8" />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="admin-password">Password</Label>
-                  <Input 
-                    id="admin-password" 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <Button 
-                  className="w-full bg-zinc-900 text-white h-12 rounded-xl font-bold" 
-                  onClick={() => handleLogin('admin')}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Accessing Secure Core...' : 'Login to Dashboard'}
-                </Button>
-              </CardContent>
-              <CardFooter>
-                <p className="text-xs text-muted-foreground text-center w-full">
-                  All administrative actions are logged and subject to periodic audit for accountability.
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              )}
+            </div>
+            <CardTitle className="text-2xl font-headline font-bold">
+              {targetRole === 'admin' ? 'Admin Portal' : 'Student Access'}
+            </CardTitle>
+            <CardDescription className="text-base">
+              {targetRole === 'admin' 
+                ? 'Authorized personnel only. Access is monitored.' 
+                : 'Sign in with your @neu.edu.ph account.'}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="px-10 pb-10">
+            <Button 
+              className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+              onClick={handleGoogleLogin}
+              disabled={isAuthenticating}
+            >
+              {isAuthenticating ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                  Verifying Identity...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-5 w-5 mr-3" />
+                  Continue with Google
+                </>
+              )}
+            </Button>
+            
+            <div className="mt-8 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <p className="text-xs text-center text-muted-foreground leading-relaxed">
+                {targetRole === 'admin' 
+                  ? 'Administrative accounts require pre-authorization in the system core. Domain restrictions apply.'
+                  : 'Domain validation is active. Non-institutional accounts will be automatically rejected by security rules.'}
+              </p>
+            </div>
+          </CardContent>
+          
+          <CardFooter className="bg-zinc-50/50 p-6 flex justify-center border-t">
+            <Link 
+              href={`/login?role=${targetRole === 'admin' ? 'student' : 'admin'}`}
+              className="text-sm font-bold text-primary hover:underline flex items-center gap-2"
+            >
+              {targetRole === 'admin' ? 'Switch to Student Login' : 'Switch to Admin Login'}
+            </Link>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
