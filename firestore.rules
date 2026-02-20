@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * CICS Docs Hub - Security Rules Documentation
+     *
+     * Core Philosophy: 
+     * This ruleset enforces a strict role-based access model distinguishing between 'Students' and 'Admins'. 
+     * Security is anchored in 'Existence over Content' for administrative privileges and 'Ownership' for 
+     * student-generated data.
+     *
+     * Data Structure:
+     * Data is organized into top-level collections for global resources (Documents, FAQs, Announcements) 
+     * and user-specific entries (Users, Inquiries, ActivityLogs).
+     *
+     * Key Security Decisions:
+     * 1. Admin Authorization: Admin status is verified by the existence of a document in the `/adminRoles/` 
+     *    collection matching the user's UID. This avoids fetching large user profile documents for rules.
+     * 2. Public vs. Private: Resources like Documents and FAQs are readable by any authenticated user 
+     *    but only writable by Admins. Inquiries and Profiles are locked to the specific owner.
+     * 3. Authorization Denormalization: All student-created documents (Inquiries, ActivityLogs) 
+     *    must contain a `userId` or `studentId` field matching the creator's UID to allow for 
+     *    efficient ownership checks without complex joins.
+     * 4. Prototyping Mode: Rules strictly enforce 'who' can touch 'what' (Authorization) but 
+     *    remain flexible on the specific fields (Schema) to allow for rapid development.
+     */
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** Checks if the requester is authenticated. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the requester has a matching UID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Checks if the document exists and the requester is the owner. */
+    function isExistingOwner(userId) {
+      // For create/update operations, resource.data refers to the *incoming* data, not the existing document.
+      // resource != null means an existing document is being accessed (update, delete).
+      // For create, resource == null. So this is primarily for update/delete.
+      return resource != null && isOwner(userId);
+    }
+
+    /** 
+     * Checks if the requester is an administrator. 
+     * Uses 'Existence over Content' via the /adminRoles collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/adminRoles/$(request.auth.uid));
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profile documents. Users manage their own profiles.
+     * @path /users/{userId}
+     * @allow (create, get, list, update) if the authenticated UID matches the document ID.
+     * @deny (create) if the UID in data doesn't match the path ID.
+     * @principle Enforces self-creation and user-ownership.
+     */
+    match /users/{userId} {
+      // Allow getting own profile or if admin, allow getting any profile
+      allow get, list: if isOwner(userId) || isAdmin();
+      // Allow creating own profile, ensuring the ID in the data matches the path userId
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      // Allow updating own profile, ensuring the ID in the data remains consistent
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      // Only admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Explicit collection to identify administrators.
+     * @path /adminRoles/{adminId}
+     * @allow (get) if signed in.
+     * @deny (list, create, update, delete) for non-admins.
+     * @principle Existence-based role management for global admin privileges.
+     */
+    match /adminRoles/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin(); // Only admins can list other admins (for security)
+      allow create, update, delete: if false; // Managed via Firebase Console or internal script.
+    }
+
+    /**
+     * @description Official PDF Documents. Students can read; only Admins can manage content.
+     * @path /documents/{documentId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for any user who is not an Admin.
+     * @principle Public read with owner-only (Admin) writes.
+     */
+    match /documents/{documentId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Metadata categories for organization.
+     * @path /categories/{categoryId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for non-admins.
+     * @principle Shared structural data managed by authorities.
+     */
+    match /categories/{categoryId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Academic programs.
+     * @path /programs/{programId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for non-admins.
+     * @principle Shared structural data managed by authorities.
+     */
+    match /programs/{programId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Official announcements for students.
+     * @path /announcements/{announcementId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for non-admins.
+     * @principle Broad access for reading; restricted administrative control for writing.
+     */
+    match /announcements/{announcementId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Student inquiries. Students see their own; Admins see all.
+     * @path /inquiries/{inquiryId}
+     * @allow (create) if the studentId field matches the sender's UID.
+     * @deny (get, list) if the user is neither the student owner nor an admin.
+     * @principle Hybrid ownership and role-based access.
+     */
+    match /inquiries/{inquiryId} {
+      // Admins can read all inquiries, owners can read their own
+      allow get, list: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
+      // Owners can create an inquiry for themselves
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      // Admins can update any inquiry, owners can update their own (ensuring studentId doesn't change)
+      allow update: if isAdmin() || (isExistingOwner(resource.data.studentId) && request.resource.data.studentId == resource.data.studentId);
+      // Only admins can delete inquiries
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Frequently Asked Questions.
+     * @path /faqs/{faqId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for non-admins.
+     * @principle Self-service support content managed by admins.
+     */
+    match /faqs/{faqId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Audit logs for security monitoring. 
+     * @path /activityLogs/{activityLogId}
+     * @allow (create) if the logged userId matches the requester.
+     * @deny (get, list) for non-admins.
+     * @principle Write-only for users (own actions), read-only for system/admins.
+     */
+    match /activityLogs/{activityLogId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false; // Logs are immutable.
+    }
+
+    /**
+     * @description Configuration for when inquiries are accepted.
+     * @path /inquiryPeriods/{inquiryPeriodId}
+     * @allow (get, list) for any authenticated user.
+     * @deny (create, update, delete) for non-admins.
+     * @principle Configuration data read by users, managed by admins.
+     */
+    match /inquiryPeriods/{inquiryPeriodId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

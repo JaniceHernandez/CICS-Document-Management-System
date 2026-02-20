@@ -1,0 +1,660 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CICS Docs Hub application, including both students and administrators. Stores core profile information and role-based access details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for authentication. Must be a valid email, typically from the @neu.edu.ph domain for students.",
+          "format": "email"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the system, determining their access permissions. Can be 'Admin' or 'Student'."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the user's account, indicating if it's active or blocked."
+        },
+        "neuStudentId": {
+          "type": "string",
+          "description": "The student ID from NEU, if the user is a student. This field is optional for administrators."
+        },
+        "programIds": {
+          "type": "array",
+          "description": "An array of IDs referencing the academic programs the student is enrolled in. (Relationship: Program N:N User)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Timestamp of the user's last successful login.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "fullName",
+        "role",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents an official PDF document stored and managed within the CICS Docs Hub. Includes metadata, file location, and usage statistics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the document."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description or abstract of the document's content."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "The secure URL or path to the stored PDF file.",
+          "format": "uri"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original file name of the uploaded document."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "The size of the document file in bytes."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "Timestamp when the document was uploaded.",
+          "format": "date-time"
+        },
+        "uploaderId": {
+          "type": "string",
+          "description": "Reference to the User (Admin) who uploaded the document. (Relationship: User 1:N Document)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the Category the document belongs to for organization. (Relationship: Category 1:N Document)"
+        },
+        "programIds": {
+          "type": "array",
+          "description": "An array of IDs referencing the academic programs relevant to this document. (Relationship: Program N:N Document)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "downloadCount": {
+          "type": "number",
+          "description": "The number of times the document has been downloaded."
+        },
+        "aiSummary": {
+          "type": "string",
+          "description": "An AI-generated summary of the document's content, if available."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the document record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the document record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "fileUrl",
+        "fileName",
+        "fileSize",
+        "uploadDate",
+        "uploaderId",
+        "categoryId",
+        "downloadCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Defines categories for organizing documents and potentially FAQs. Helps in filtering and browsing content.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category (e.g., 'Syllabus', 'Forms', 'Research Papers')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what documents or FAQs fall under this category."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the category was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the category was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Program": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Program",
+      "type": "object",
+      "description": "Represents an undergraduate program offered by CICS, used for associating students and documents.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Program entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the academic program (e.g., 'Bachelor of Science in Computer Science')."
+        },
+        "shortCode": {
+          "type": "string",
+          "description": "A short code or acronym for the program (e.g., 'BSCS')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the program."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the program record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the program record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "shortCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Announcement": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Announcement",
+      "type": "object",
+      "description": "Stores information for announcements made by administrators, visible to students.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Announcement entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or subject of the announcement."
+        },
+        "content": {
+          "type": "string",
+          "description": "The full text content of the announcement."
+        },
+        "publishDate": {
+          "type": "string",
+          "description": "The date and time when the announcement was published.",
+          "format": "date-time"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "The date and time when the announcement should no longer be displayed. Optional.",
+          "format": "date-time"
+        },
+        "creatorId": {
+          "type": "string",
+          "description": "Reference to the User (Admin) who created the announcement. (Relationship: User 1:N Announcement)"
+        },
+        "targetProgramIds": {
+          "type": "array",
+          "description": "An array of IDs referencing specific academic programs this announcement is targeted at. If empty, it's for all students. (Relationship: Program N:N Announcement)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the announcement record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the announcement record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "publishDate",
+        "creatorId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Inquiry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Inquiry",
+      "type": "object",
+      "description": "Represents a student's inquiry or support request submitted to administrators.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Inquiry entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the User (Student) who submitted the inquiry. (Relationship: User 1:N Inquiry)"
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject line of the inquiry."
+        },
+        "message": {
+          "type": "string",
+          "description": "The full message content of the inquiry."
+        },
+        "submissionDate": {
+          "type": "string",
+          "description": "Timestamp when the inquiry was submitted.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the inquiry (e.g., 'Submitted', 'In Progress', 'Resolved', 'Closed')."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the User (Admin) currently handling or who resolved the inquiry. Optional. (Relationship: User 1:N Inquiry)"
+        },
+        "adminResponse": {
+          "type": "string",
+          "description": "The response message provided by the administrator. Optional."
+        },
+        "responseDate": {
+          "type": "string",
+          "description": "Timestamp when the administrator provided a response. Optional.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the inquiry record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the inquiry record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "subject",
+        "message",
+        "submissionDate",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FAQ": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FAQ",
+      "type": "object",
+      "description": "Stores frequently asked questions and their answers for student self-service support.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FAQ entity."
+        },
+        "question": {
+          "type": "string",
+          "description": "The question asked by students."
+        },
+        "answer": {
+          "type": "string",
+          "description": "The detailed answer to the question."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the Category for organizing FAQs. Optional. (Relationship: Category 1:N FAQ)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the FAQ record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the FAQ record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "answer",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ActivityLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ActivityLog",
+      "type": "object",
+      "description": "Records various user and system activities for auditing, security monitoring, and analytics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ActivityLog entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who performed the action. (Relationship: User 1:N ActivityLog)"
+        },
+        "actionType": {
+          "type": "string",
+          "description": "The type of action performed (e.g., 'LOGIN', 'DOCUMENT_DOWNLOAD', 'DOCUMENT_UPLOAD', 'USER_BLOCKED', 'INQUIRY_SUBMITTED')."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the action occurred.",
+          "format": "date-time"
+        },
+        "documentId": {
+          "type": "string",
+          "description": "Reference to the Document involved in the action, if applicable. Optional. (Relationship: Document 1:N ActivityLog)"
+        },
+        "affectedUserId": {
+          "type": "string",
+          "description": "Reference to another User affected by the action (e.g., a student whose account was blocked by an admin). Optional. (Relationship: User 1:N ActivityLog)"
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional context or details about the activity."
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "The IP address from which the action originated. Optional."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "actionType",
+        "timestamp"
+      ]
+    },
+    "InquiryPeriod": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InquiryPeriod",
+      "type": "object",
+      "description": "Manages configurable periods during which students can submit inquiries, set by administrators.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InquiryPeriod entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "A descriptive name for the inquiry period (e.g., 'First Semester AY 2024-2025 Inquiry')."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date and time when the inquiry submission period begins.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date and time when the inquiry submission period ends.",
+          "format": "date-time"
+        },
+        "isEnabled": {
+          "type": "boolean",
+          "description": "A boolean indicating whether inquiry submissions are currently enabled for this period."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description or notes about this inquiry period."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the User (Admin) who configured this inquiry period. (Relationship: User 1:N InquiryPeriod)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the inquiry period record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the inquiry period record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "startDate",
+        "endDate",
+        "isEnabled",
+        "adminId",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores core user profiles for both students and administrators. The `userId` directly corresponds to `request.auth.uid`. The `role` and `programIds` fields provide essential context for client-side logic and some rule checks. Includes denormalized 'programIds' for user affiliations."
+        }
+      },
+      {
+        "path": "/adminRoles/{adminId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A dedicated top-level collection to signify administrator roles. The existence of a document at `/adminRoles/{adminId}` where `adminId` matches `request.auth.uid` is the sole determinant for admin privileges in security rules, adhering to the 'Existence over Content' DBAC principle for global roles. This collection will store minimal data, possibly just an 'id' field, for efficient rule checks."
+        }
+      },
+      {
+        "path": "/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Contains all official PDF documents. Accessible by authenticated students for reading/listing (with client-side filtering by `programIds`, `categoryId`) and fully managed by administrators. Includes denormalized `uploaderId` and `programIds` for authorization independence and client-side filtering.",
+          "params": [
+            {
+              "name": "documentId",
+              "description": "The unique identifier for a specific document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Manages categories for organizing documents and FAQs. Readable by all authenticated users and fully managed by administrators.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for a specific document category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/programs/{programId}",
+        "definition": {
+          "entityName": "Program",
+          "schema": {
+            "$ref": "#/backend/entities/Program"
+          },
+          "description": "Stores information about academic programs offered by CICS. Readable by all authenticated users and fully managed by administrators.",
+          "params": [
+            {
+              "name": "programId",
+              "description": "The unique identifier for a specific academic program."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/announcements/{announcementId}",
+        "definition": {
+          "entityName": "Announcement",
+          "schema": {
+            "$ref": "#/backend/entities/Announcement"
+          },
+          "description": "Stores announcements created by administrators. Accessible by all authenticated students (with client-side filtering by `targetProgramIds`) and fully managed by administrators. Includes denormalized `creatorId` and `targetProgramIds` for authorization independence and client-side filtering.",
+          "params": [
+            {
+              "name": "announcementId",
+              "description": "The unique identifier for a specific announcement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/inquiries/{inquiryId}",
+        "definition": {
+          "entityName": "Inquiry",
+          "schema": {
+            "$ref": "#/backend/entities/Inquiry"
+          },
+          "description": "Manages student inquiries. Students can create, read, and update their own inquiries. Administrators can manage all inquiries (read, update, delete). Includes denormalized `studentId` and `adminId` for authorization independence.",
+          "params": [
+            {
+              "name": "inquiryId",
+              "description": "The unique identifier for a specific inquiry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/faqs/{faqId}",
+        "definition": {
+          "entityName": "FAQ",
+          "schema": {
+            "$ref": "#/backend/entities/FAQ"
+          },
+          "description": "Contains frequently asked questions and their answers for student self-service. Readable by all authenticated students and fully managed by administrators.",
+          "params": [
+            {
+              "name": "faqId",
+              "description": "The unique identifier for a specific FAQ entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/activityLogs/{activityLogId}",
+        "definition": {
+          "entityName": "ActivityLog",
+          "schema": {
+            "$ref": "#/backend/entities/ActivityLog"
+          },
+          "description": "Records various user and system activities for auditing and monitoring. Read-only for administrators; write-only for authenticated users (for their own actions) or system processes. Includes denormalized `userId`, `documentId`, and `affectedUserId` for authorization independence.",
+          "params": [
+            {
+              "name": "activityLogId",
+              "description": "The unique identifier for a specific activity log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/inquiryPeriods/{inquiryPeriodId}",
+        "definition": {
+          "entityName": "InquiryPeriod",
+          "schema": {
+            "$ref": "#/backend/entities/InquiryPeriod"
+          },
+          "description": "Configures periods during which students can submit inquiries. Readable by all authenticated students to check submission status and fully managed by administrators. Includes denormalized `adminId` for authorization independence.",
+          "params": [
+            {
+              "name": "inquiryPeriodId",
+              "description": "The unique identifier for a specific inquiry period."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to be secure, scalable, and debuggable, adhering strictly to the provided core design principles and mandates. \n\n**Authorization Independence (CRITICAL) and Denormalization:**\nAuthorization independence is achieved by ensuring that all necessary authorization contexts are denormalized directly into the documents themselves or managed through top-level, self-contained collections. For instance:\n*   The `/users/{userId}` collection stores each user's profile, including their `programIds`. While the `role` field is present, the authoritative source for admin permissions, used in security rules, is the dedicated `/adminRoles/{adminId}` collection. This 'existence over content' approach for roles means rules can check `exists(/adminRoles/$(request.auth.uid))` without needing to `get()` the full user profile.\n*   Documents like `/documents/{documentId}`, `/announcements/{announcementId}`, and `/inquiries/{inquiryId}` explicitly contain fields such as `uploaderId`, `creatorId`, `studentId`, and `adminId`. This eliminates the need for `get()` calls in security rules to check ownership or direct associations, making rule evaluation atomic, robust, and easy to debug. Access decisions for a document can be made by inspecting the document itself and `request.auth.uid`.\n\n**QAPs (Rules are not Filters) and Structural Segregation:**\nThis design prioritizes secure `list` operations by implementing structural segregation and clear access patterns:\n*   **Structural Segregation:** Collections like `/adminRoles`, `/activityLogs`, `/documents`, `/announcements`, `/categories`, `/programs`, `/faqs`, and `/inquiryPeriods` are designed such that all documents within a given collection share a homogeneous security posture. For example, all documents in `/documents` are generally accessible to authenticated students, and all documents in `/activityLogs` are readable only by administrators. This simplifies security rules immensely, as there's no need for complex conditional logic within a single collection to differentiate access levels.\n*   **Client-Side Filtering for Broad Access:** For collections like `/documents` and `/announcements`, which contain `programIds` or `targetProgramIds` respectively, the rules allow `list` access for all authenticated students. The filtering based on a student's specific programs is expected to be handled on the client-side via Firestore queries (e.g., `where('programIds', 'array-contains-any', studentProgramIds)`). This strategy avoids complex `get()` calls in `list` rules to fetch a user's program affiliations, thus adhering to the QAP principle that "
+  }
+}
