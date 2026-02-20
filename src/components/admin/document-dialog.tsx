@@ -21,11 +21,13 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase, useStorage } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, FileText } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentDialogProps {
   open: boolean;
@@ -35,7 +37,9 @@ interface DocumentDialogProps {
 
 export function DocumentDialog({ open, onOpenChange, document: editDoc }: DocumentDialogProps) {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { user } = useUser();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
   // Form State
@@ -79,25 +83,34 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   };
 
   const handleSubmit = async () => {
-    if (!firestore || !user) return;
+    if (!firestore || !user || !storage) return;
     setLoading(true);
 
     try {
       const isEdit = !!editDoc;
       const docId = isEdit ? editDoc.id : doc(collection(firestore, 'documents')).id;
-      
       const now = new Date().toISOString();
       
-      // Simulate file upload URL
-      const fileUrl = file ? `https://simulated-storage.com/${file.name}` : (editDoc?.fileUrl || '');
+      let fileUrl = editDoc?.fileUrl || '';
+      let fileName = editDoc?.fileName || 'unknown';
+      let fileSize = editDoc?.fileSize || 0;
+
+      // Handle File Upload if a new file is selected
+      if (file) {
+        const storageRef = ref(storage, `documents/${docId}/${file.name}`);
+        const uploadResult = await uploadBytes(storageRef, file);
+        fileUrl = await getDownloadURL(uploadResult.ref);
+        fileName = file.name;
+        fileSize = file.size;
+      }
 
       const docData = {
         id: docId,
         title,
         description,
         fileUrl,
-        fileName: file ? file.name : (editDoc?.fileName || 'unknown'),
-        fileSize: file ? file.size : (editDoc?.fileSize || 0),
+        fileName,
+        fileSize,
         uploadDate: isEdit ? editDoc.uploadDate : now,
         uploaderId: user.uid,
         categoryId,
@@ -110,14 +123,21 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
       if (isEdit) {
         updateDocumentNonBlocking(doc(firestore, 'documents', docId), docData);
         logActivity(firestore, user.uid, 'DOCUMENT_EDIT', `Updated document: ${title}`, docId);
+        toast({ title: "Document Updated", description: `${title} has been successfully updated.` });
       } else {
         setDocumentNonBlocking(doc(firestore, 'documents', docId), docData, { merge: true });
         logActivity(firestore, user.uid, 'DOCUMENT_UPLOAD', `Uploaded new document: ${title}`, docId);
+        toast({ title: "Document Uploaded", description: `${title} is now available in the hub.` });
       }
 
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving document:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Upload Failed", 
+        description: error.message || "An unexpected error occurred during the upload." 
+      });
     } finally {
       setLoading(false);
     }
@@ -125,65 +145,80 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-headline font-bold text-2xl">
-            {editDoc ? 'Edit Document Details' : 'Upload New Document'}
+      <DialogContent className="max-w-2xl rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-primary text-white">
+          <DialogTitle className="font-headline font-bold text-3xl">
+            {editDoc ? 'Update Document' : 'Upload Resource'}
           </DialogTitle>
-          <DialogDescription>
-            Provide detailed information for organizational accuracy.
+          <DialogDescription className="text-white/70">
+            {editDoc ? 'Modify existing document metadata and settings.' : 'Upload a PDF to the CICS official repository.'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
+        <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto bg-background">
           <div className="grid gap-2">
-            <Label htmlFor="title">Document Title</Label>
+            <Label htmlFor="title" className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Document Title</Label>
             <Input 
               id="title" 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
               placeholder="e.g. BSCS Curriculum v2024"
+              className="h-12 rounded-xl focus-visible:ring-primary"
             />
           </div>
 
-          {!editDoc && (
-            <div className="grid gap-2">
-              <Label>PDF File</Label>
-              <div 
-                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-zinc-50 transition-colors"
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                <input 
-                  type="file" 
-                  id="file-upload" 
-                  className="hidden" 
-                  accept=".pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                />
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium">
-                  {file ? file.name : 'Click to select or drag and drop PDF'}
+          <div className="grid gap-2">
+            <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">PDF Source</Label>
+            <div 
+              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                file ? 'border-primary bg-primary/5' : 'border-zinc-200 hover:border-primary hover:bg-zinc-50'
+              }`}
+              onClick={() => document.getElementById('file-upload')?.click()}
+            >
+              <input 
+                type="file" 
+                id="file-upload" 
+                className="hidden" 
+                accept=".pdf"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <div className="flex flex-col items-center">
+                {file ? (
+                  <div className="bg-primary p-3 rounded-full mb-3">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                ) : (
+                  <div className="bg-zinc-100 p-3 rounded-full mb-3">
+                    <Upload className="h-6 w-6 text-zinc-400" />
+                  </div>
+                )}
+                <p className="font-bold text-lg">
+                  {file ? file.name : editDoc ? 'Click to change PDF' : 'Click to select PDF'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'PDF documents up to 50MB'}
                 </p>
               </div>
             </div>
-          )}
+          </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="description">Description (Optional)</Label>
+            <Label htmlFor="description" className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Description</Label>
             <Textarea 
               id="description" 
               value={description} 
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief summary of the document content..."
+              placeholder="Brief summary for indexing..."
+              className="min-h-[100px] rounded-xl focus-visible:ring-primary"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="grid gap-2">
-              <Label>Category</Label>
+              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Category</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                <SelectTrigger className="h-12 rounded-xl">
+                  <SelectValue placeholder="Select classification" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((cat) => (
@@ -195,30 +230,46 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
           </div>
 
           <div className="grid gap-3">
-            <Label>Applicable Programs</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Target Academic Programs</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
               {programs?.map((prog) => (
-                <div key={prog.id} className="flex items-center space-x-2">
+                <div key={prog.id} className="flex items-center space-x-3 bg-white p-3 rounded-xl border border-zinc-100">
                   <Checkbox 
                     id={prog.id} 
                     checked={selectedPrograms.includes(prog.id)}
                     onCheckedChange={() => handleProgramToggle(prog.id)}
+                    className="h-5 w-5 rounded-md"
                   />
-                  <label htmlFor={prog.id} className="text-sm cursor-pointer">{prog.name} ({prog.shortCode})</label>
+                  <label htmlFor={prog.id} className="text-sm font-medium cursor-pointer flex-1">
+                    {prog.shortCode} <span className="text-xs text-muted-foreground block font-normal">{prog.name}</span>
+                  </label>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
+        <DialogFooter className="p-8 bg-zinc-50 border-t flex flex-col sm:flex-row gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            className="rounded-xl h-12 px-8 flex-1 sm:flex-none border-zinc-200"
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={loading || !title || (!editDoc && !file)}
-            className="bg-primary text-white rounded-xl min-w-[120px]"
+            className="bg-primary text-white rounded-xl h-12 px-12 font-bold shadow-lg shadow-primary/20 flex-1 sm:flex-none"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (editDoc ? 'Save Changes' : 'Upload Document')}
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Processing...
+              </>
+            ) : (
+              editDoc ? 'Save Changes' : 'Publish Document'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
