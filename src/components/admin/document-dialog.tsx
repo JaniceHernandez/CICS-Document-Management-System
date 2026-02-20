@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,9 +22,9 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useFirestore, useUser, useCollection, useMemoFirebase, useStorage } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { put } from '@vercel/blob';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { Loader2, Upload, FileText } from 'lucide-react';
@@ -37,7 +38,6 @@ interface DocumentDialogProps {
 
 export function DocumentDialog({ open, onOpenChange, document: editDoc }: DocumentDialogProps) {
   const firestore = useFirestore();
-  const storage = useStorage();
   const { user } = useUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -49,7 +49,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
 
-  // Fetch Categories and Programs - Only run when both firestore and user are available
+  // Fetch Categories and Programs
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
   const { data: categories } = useCollection(categoriesQuery);
@@ -83,7 +83,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   };
 
   const handleSubmit = async () => {
-    if (!firestore || !user || !storage) return;
+    if (!firestore || !user) return;
     setLoading(true);
 
     try {
@@ -95,11 +95,13 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
       let fileName = editDoc?.fileName || 'unknown';
       let fileSize = editDoc?.fileSize || 0;
 
-      // Handle File Upload if a new file is selected
+      // Handle File Upload via Vercel Blob if a new file is selected
       if (file) {
-        const storageRef = ref(storage, `documents/${docId}/${file.name}`);
-        const uploadResult = await uploadBytes(storageRef, file);
-        fileUrl = await getDownloadURL(uploadResult.ref);
+        // We use the docId in the path to keep it organized
+        const blob = await put(`documents/${docId}/${file.name}`, file, {
+          access: 'public',
+        });
+        fileUrl = blob.url;
         fileName = file.name;
         fileSize = file.size;
       }
@@ -151,7 +153,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             {editDoc ? 'Update Document' : 'Upload Resource'}
           </DialogTitle>
           <DialogDescription className="text-white/70">
-            {editDoc ? 'Modify existing document metadata and settings.' : 'Upload a PDF to the CICS official repository.'}
+            {editDoc ? 'Modify existing document metadata and settings.' : 'Upload a PDF to the CICS official repository (Cloud Storage).'}
           </DialogDescription>
         </DialogHeader>
 
@@ -265,7 +267,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Processing...
+                Uploading...
               </>
             ) : (
               editDoc ? 'Save Changes' : 'Publish Document'
