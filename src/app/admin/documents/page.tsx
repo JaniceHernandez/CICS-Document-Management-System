@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -14,7 +15,6 @@ import {
   Edit, 
   ExternalLink,
   Loader2,
-  Filter
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,9 +37,9 @@ import {
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteFromBlob } from '@/app/actions/storage';
 import { DocumentDialog } from '@/components/admin/document-dialog';
 import { logActivity } from '@/lib/activity-logging';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DocumentManagement() {
@@ -63,15 +63,30 @@ export default function DocumentManagement() {
     doc.fileName.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
-  const handleDelete = (document: any) => {
+  const handleDelete = async (document: any) => {
     if (!firestore || !user) return;
     if (confirm(`Delete "${document.title}" permanently?`)) {
-      deleteDocumentNonBlocking(doc(firestore, 'documents', document.id));
-      logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted document: ${document.title}`, document.id);
-      toast({
-        title: "Document Deleted",
-        description: "File and info removed from the list.",
-      });
+      try {
+        // Remove from Firestore
+        deleteDocumentNonBlocking(doc(firestore, 'documents', document.id));
+        
+        // Remove from Vercel Blob
+        if (document.fileUrl) {
+          await deleteFromBlob(document.fileUrl);
+        }
+
+        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted document and file: ${document.title}`, document.id);
+        toast({
+          title: "Document Deleted",
+          description: "File and record removed successfully.",
+        });
+      } catch (e: any) {
+        toast({
+          title: "Cleanup Error",
+          description: "Record removed but cloud file deletion might have failed.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -79,14 +94,9 @@ export default function DocumentManagement() {
     return categories?.find(c => c.id === catId)?.name || 'Uncategorized';
   };
 
-  const getProgramCodes = (progIds: string[]) => {
-    if (!progIds || progIds.length === 0) return 'All Programs';
-    return progIds.map(id => programs?.find(p => p.id === id)?.shortCode).join(', ');
-  };
-
   const totalSize = documents?.reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
   const sizeInMB = (totalSize / (1024 * 1024)).toFixed(1);
-  const storagePercent = Math.min(100, (parseFloat(sizeInMB) / 1024) * 100);
+  const storagePercent = Math.min(100, (parseFloat(sizeInMB) / 500) * 100); // Assuming 500MB quota for visual context
 
   return (
     <div className="flex min-h-screen bg-zinc-50/30">
@@ -97,7 +107,7 @@ export default function DocumentManagement() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Documents</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage all school documents and files.</p>
+              <p className="text-muted-foreground mt-1 text-lg">Manage and host institutional resources.</p>
             </div>
             <Button 
               onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
@@ -113,13 +123,13 @@ export default function DocumentManagement() {
               <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
                 <div className="space-y-1">
                   <CardTitle className="font-headline font-bold text-xl">All Documents</CardTitle>
-                  <CardDescription>Managing {documents?.length || 0} files</CardDescription>
+                  <CardDescription>Managing {documents?.length || 0} active files</CardDescription>
                 </div>
                 <div className="flex gap-4">
                   <div className="relative w-72">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      placeholder="Search files..." 
+                      placeholder="Search resources..." 
                       className="pl-11 h-11 rounded-2xl bg-zinc-50 border-none focus-visible:ring-primary"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -131,35 +141,35 @@ export default function DocumentManagement() {
                 {docsLoading ? (
                   <div className="flex flex-col items-center justify-center py-32 space-y-4">
                     <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                    <p className="text-muted-foreground font-medium">Loading files...</p>
+                    <p className="text-muted-foreground font-medium">Loading library...</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader className="bg-zinc-50/50">
                       <TableRow className="border-none">
-                        <TableHead className="font-bold px-8">File Info</TableHead>
-                        <TableHead className="font-bold">Category</TableHead>
-                        <TableHead className="font-bold">Access</TableHead>
-                        <TableHead className="font-bold">Date</TableHead>
-                        <TableHead className="font-bold text-right px-8">Actions</TableHead>
+                        <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Resource Info</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Access</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Modified</TableHead>
+                        <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredDocs?.map((doc) => (
-                        <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
-                          <TableCell className="px-8 py-4">
+                        <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
+                          <TableCell className="px-8 py-5">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center">
-                                <FileText className="h-6 w-6 text-primary" />
+                              <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                                <FileText className="h-6 w-6" />
                               </div>
                               <div>
                                 <p className="font-bold text-zinc-900 leading-tight">{doc.title}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{doc.fileName} • {(doc.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                                <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">{(doc.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[10px] tracking-wider px-3">
+                            <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
                               {getCategoryName(doc.categoryId)}
                             </Badge>
                           </TableCell>
@@ -167,46 +177,46 @@ export default function DocumentManagement() {
                             <div className="flex flex-wrap gap-1 max-w-[200px]">
                               {doc.programIds?.length > 0 ? (
                                 doc.programIds.map((pid: string) => (
-                                  <Badge key={pid} variant="outline" className="border-primary/20 text-primary text-[10px] font-bold">
+                                  <Badge key={pid} variant="outline" className="border-primary/20 text-primary text-[9px] font-bold px-2">
                                     {programs?.find(p => p.id === pid)?.shortCode}
                                   </Badge>
                                 ))
                               ) : (
-                                <Badge variant="outline" className="border-zinc-200 text-zinc-400 text-[10px] font-bold">PUBLIC</Badge>
+                                <Badge variant="outline" className="border-zinc-200 text-zinc-400 text-[9px] font-bold px-2">PUBLIC</Badge>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm text-zinc-500 font-medium">
+                            <div className="text-[11px] text-zinc-500 font-bold uppercase">
                               {new Date(doc.updatedAt || doc.uploadDate).toLocaleDateString()}
                             </div>
                           </TableCell>
                           <TableCell className="text-right px-8">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100">
+                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 h-10 w-10">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                                <DropdownMenuLabel className="text-xs font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Options</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Manage Resource</DropdownMenuLabel>
                                 <DropdownMenuItem 
-                                  className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary"
+                                  className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium"
                                   onClick={() => { setEditingDoc(doc); setIsDialogOpen(true); }}
                                 >
-                                  <Edit className="h-4 w-4 mr-3" /> Edit Info
+                                  <Edit className="h-4 w-4 mr-3" /> Edit Metadata
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary" asChild>
+                                <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
                                   <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="h-4 w-4 mr-3" /> View File
+                                    <ExternalLink className="h-4 w-4 mr-3" /> Open File
                                   </a>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="my-2 bg-zinc-50" />
                                 <DropdownMenuItem 
-                                  className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white"
+                                  className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
                                   onClick={() => handleDelete(doc)}
                                 >
-                                  <Trash2 className="h-4 w-4 mr-3" /> Delete
+                                  <Trash2 className="h-4 w-4 mr-3" /> Delete Permanently
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -225,10 +235,8 @@ export default function DocumentManagement() {
                   <Upload className="h-24 w-24" />
                 </div>
                 <CardHeader className="p-8">
-                  <CardTitle className="font-headline font-bold text-2xl flex items-center gap-3">
-                    Quick Add
-                  </CardTitle>
-                  <CardDescription className="text-white/60">Upload new documents.</CardDescription>
+                  <CardTitle className="font-headline font-bold text-2xl">Quick Add</CardTitle>
+                  <CardDescription className="text-white/60">Institutional file host.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 pt-0">
                   <div 
@@ -239,8 +247,8 @@ export default function DocumentManagement() {
                       <Upload className="h-8 w-8" />
                     </div>
                     <div>
-                      <p className="font-bold text-lg">Add New File</p>
-                      <p className="text-xs text-white/40">Drop PDF here or click to add</p>
+                      <p className="font-bold text-lg">Upload PDF</p>
+                      <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Drag & Drop Supported</p>
                     </div>
                   </div>
                 </CardContent>
@@ -248,14 +256,14 @@ export default function DocumentManagement() {
 
               <Card className="border-none shadow-sm rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-zinc-50">
-                  <CardTitle className="font-headline font-bold text-xl">Cloud Storage</CardTitle>
-                  <CardDescription>File usage info</CardDescription>
+                  <CardTitle className="font-headline font-bold text-xl">Cloud Usage</CardTitle>
+                  <CardDescription>Storage quota monitoring</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                   <div className="space-y-3">
                     <div className="flex justify-between items-end">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Space Used</span>
-                      <span className="text-lg font-bold text-primary tabular-nums">{sizeInMB} MB</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data Hosted</span>
+                      <span className="text-xl font-bold text-primary tabular-nums">{sizeInMB} MB</span>
                     </div>
                     <div className="h-3 bg-zinc-100 rounded-full overflow-hidden">
                       <div 
@@ -266,13 +274,13 @@ export default function DocumentManagement() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-zinc-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Files</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Total Assets</p>
                       <p className="text-2xl font-bold text-primary">{documents?.length || 0}</p>
                     </div>
                     <div className="p-4 bg-zinc-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Avg Size</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Avg Weight</p>
                       <p className="text-2xl font-bold text-primary">
-                        {documents?.length ? (totalSize / documents.length / 1024 / 1024).toFixed(1) : 0} <span className="text-xs">MB</span>
+                        {documents?.length ? (totalSize / documents.length / 1024 / 1024).toFixed(1) : 0} <span className="text-[10px]">MB</span>
                       </p>
                     </div>
                   </div>

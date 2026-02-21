@@ -1,7 +1,7 @@
 
 'use server';
 
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 
 /**
  * Server action to upload a file to Vercel Blob with public access.
@@ -26,7 +26,6 @@ export async function uploadToBlob(formData: FormData) {
   }
 
   try {
-    // Explicitly pass the token to ensure the SDK uses the latest credentials
     const blob = await put(path, file, {
       access: 'public',
       addRandomSuffix: true,
@@ -40,11 +39,26 @@ export async function uploadToBlob(formData: FormData) {
       path: path,
     });
 
-    // Handle common HTTP error responses from the storage provider
-    if (error.message.includes('401') || error.message.includes('Forbidden') || error.message.includes('unexpected response')) {
-      throw new Error('Authentication failed with the storage provider. Please verify your BLOB_READ_WRITE_TOKEN.');
+    if (error.message.includes('401') || error.message.includes('Forbidden')) {
+      throw new Error('Authentication failed with the storage provider. Please verify your token.');
     }
 
     throw new Error(error.message || 'An unexpected error occurred during file upload.');
+  }
+}
+
+/**
+ * Server action to delete a file from Vercel Blob.
+ */
+export async function deleteFromBlob(url: string) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) throw new Error('Storage provider is not configured.');
+
+  try {
+    await del(url, { token });
+    return { success: true };
+  } catch (error: any) {
+    console.error('Vercel Blob Deletion Failure:', error);
+    throw new Error('Failed to remove file from cloud storage.');
   }
 }
