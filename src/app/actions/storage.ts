@@ -5,7 +5,7 @@ import { put } from '@vercel/blob';
 
 /**
  * Server action to upload a file to Vercel Blob with public access.
- * Uses the institutional BLOB_READ_WRITE_TOKEN provided for secure synchronization.
+ * Uses the institutional BLOB_READ_WRITE_TOKEN for secure synchronization.
  */
 export async function uploadToBlob(formData: FormData) {
   const file = formData.get('file') as File;
@@ -26,6 +26,7 @@ export async function uploadToBlob(formData: FormData) {
   }
 
   try {
+    // Explicitly pass the token to ensure the SDK uses the latest credentials
     const blob = await put(path, file, {
       access: 'public',
       addRandomSuffix: true,
@@ -34,13 +35,14 @@ export async function uploadToBlob(formData: FormData) {
 
     return blob.url;
   } catch (error: any) {
-    console.error('Vercel Blob Upload Failure Details:', {
+    console.error('Vercel Blob Upload Failure:', {
       message: error.message,
       path: path,
     });
 
-    if (error.message.includes('401') || error.message.includes('Forbidden')) {
-      throw new Error('Authentication failed with the storage provider. Please verify credentials.');
+    // Handle common HTTP error responses from the storage provider
+    if (error.message.includes('401') || error.message.includes('Forbidden') || error.message.includes('unexpected response')) {
+      throw new Error('Authentication failed with the storage provider. Please verify your BLOB_READ_WRITE_TOKEN.');
     }
 
     throw new Error(error.message || 'An unexpected error occurred during file upload.');
