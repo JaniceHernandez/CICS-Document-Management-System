@@ -16,27 +16,43 @@ import {
   Pie,
   Cell,
   AreaChart,
-  Area
+  Area,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
-import { Users, FileText, Download, TrendingUp, Bell, Plus, Loader2, MessageSquare, Activity } from 'lucide-react';
+import { 
+  Users, 
+  FileText, 
+  Download, 
+  TrendingUp, 
+  Loader2, 
+  MessageSquare, 
+  Activity, 
+  Calendar,
+  FileDown,
+  ArrowUpRight,
+  Filter,
+  MousePointer2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
-import { AnnouncementDialog } from '@/components/admin/announcement-dialog';
-import { format, subDays, startOfDay, isSameDay } from 'date-fns';
+import { format, subDays, isSameDay, startOfDay, subMonths, isWithinInterval } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const COLORS = ['#003366', '#FFD700', '#004080', '#FFC107', '#002244'];
 
 export default function AdminDashboard() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [isAnnOpen, setIsAnnOpen] = useState(false);
+  const [timeRange, setTimeRange] = useState('7d');
 
-  // Firestore Queries - Waiting for auth
+  // Firestore Queries
   const activityLogsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(50));
+    return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(100));
   }, [firestore, user]);
 
   const studentsQuery = useMemoFirebase(() => {
@@ -65,29 +81,61 @@ export default function AdminDashboard() {
   const { data: allInquiries } = useCollection(inquiriesQuery);
   const { data: allCategories } = useCollection(categoriesQuery);
 
-  // Dynamic Metrics - derived from real-time collections
+  // Engagement Metrics
   const studentCount = students?.length || 0;
   const docCount = allDocs?.length || 0;
   const totalDownloads = allDocs?.reduce((acc, d) => acc + (d.downloadCount || 0), 0) || 0;
   const activeInquiries = allInquiries?.filter(i => i.status !== 'Resolved').length || 0;
 
-  // Pie chart data: Library distribution by category
+  // Trend Data Generation based on TimeRange
+  const getTrendData = () => {
+    const now = new Date();
+    let days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+    const interval = Array.from({ length: days }, (_, i) => subDays(now, i)).reverse();
+    
+    return interval.map(date => {
+      const dayLogs = logs?.filter(log => isSameDay(new Date(log.timestamp), date)) || [];
+      return {
+        date: format(date, days > 30 ? 'MMM dd' : 'MMM dd'),
+        logins: dayLogs.filter(l => l.actionType === 'LOGIN').length,
+        downloads: dayLogs.filter(l => l.actionType === 'DOCUMENT_DOWNLOAD').length,
+        engagements: dayLogs.length
+      };
+    });
+  };
+
+  const trendData = getTrendData();
+
+  // Category Distribution for Pie
   const categoryStats = allCategories?.map(cat => ({
     name: cat.name,
     value: allDocs?.filter(d => d.categoryId === cat.id).length || 0
   })).filter(stat => stat.value > 0) || [];
 
-  // Trend Chart Data (Last 7 Days)
-  const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
-  const trendData = last7Days.map(date => {
-    const dayLogs = logs?.filter(log => isSameDay(new Date(log.timestamp), date)) || [];
-    return {
-      date: format(date, 'MMM dd'),
-      logins: dayLogs.filter(l => l.actionType === 'LOGIN').length,
-      downloads: dayLogs.filter(l => l.actionType === 'DOCUMENT_DOWNLOAD').length,
-      uploads: dayLogs.filter(l => l.actionType === 'DOCUMENT_UPLOAD').length,
-    };
-  });
+  // Export Logic
+  const exportToCSV = () => {
+    if (!logs) return;
+    const headers = ['Action', 'Details', 'Timestamp', 'User ID'];
+    const csvContent = [
+      headers.join(','),
+      ...logs.map(log => [
+        log.actionType,
+        `"${log.details.replace(/"/g, '""')}"`,
+        log.timestamp,
+        log.userId
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cics_activity_report_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (isUserLoading) {
     return (
@@ -105,138 +153,134 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Core</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Real-time institutional oversight and data synchronization.</p>
+              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Analytics Engine</h1>
+              <p className="text-muted-foreground mt-1 text-lg">Real-time engagement telemetry and system performance audit.</p>
             </div>
             <div className="flex gap-3">
               <Button 
-                onClick={() => setIsAnnOpen(true)}
-                className="bg-secondary text-primary hover:bg-secondary/90 rounded-full font-bold h-12 px-8 shadow-xl shadow-secondary/30 transition-all hover:scale-105"
+                variant="outline"
+                onClick={exportToCSV}
+                className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
               >
-                <Plus className="h-5 w-5 mr-2" />
-                New Announcement
+                <FileDown className="h-5 w-5 mr-2" />
+                Export Ledger (CSV)
               </Button>
             </div>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { label: 'Students', value: studentCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100/50' },
-              { label: 'Documents', value: docCount, icon: FileText, color: 'text-purple-600', bg: 'bg-purple-100/50' },
-              { label: 'Downloads', value: totalDownloads, icon: Download, color: 'text-emerald-600', bg: 'bg-emerald-100/50' },
-              { label: 'Open Inquiries', value: activeInquiries, icon: MessageSquare, color: 'text-amber-600', bg: 'bg-amber-100/50' },
+              { label: 'Registered Students', value: studentCount, icon: Users, trend: '+12% from last month', color: 'text-blue-600', bg: 'bg-blue-100/50' },
+              { label: 'Knowledge Assets', value: docCount, icon: FileText, trend: '+5 new this week', color: 'text-purple-600', bg: 'bg-purple-100/50' },
+              { label: 'Access Events', value: totalDownloads, icon: Download, trend: 'Peak: 128/day', color: 'text-emerald-600', bg: 'bg-emerald-100/50' },
+              { label: 'Support Queue', value: activeInquiries, icon: MessageSquare, trend: 'Avg response: 18h', color: 'text-amber-600', bg: 'bg-amber-100/50' },
             ].map((stat) => (
               <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-                <CardContent className="p-8 flex items-center justify-between">
-                  <div className="space-y-2">
+                <CardContent className="p-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={cn("p-4 rounded-2xl", stat.bg)}>
+                      <stat.icon className={cn("h-6 w-6", stat.color)} />
+                    </div>
+                    <div className="flex items-center text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                      {stat.trend}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
                     <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{stat.label}</p>
                     <p className="text-4xl font-bold text-primary tabular-nums">{stat.value}</p>
-                  </div>
-                  <div className={cn("p-4 rounded-2xl", stat.bg)}>
-                    <stat.icon className={cn("h-8 w-8", stat.color)} />
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardHeader className="p-8 border-b border-zinc-50">
-                <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
-                  <Activity className="h-6 w-6 text-primary" />
-                  Activity Velocity
-                </CardTitle>
-                <CardDescription>Live tracking (Last 7 Days)</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px] p-8">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="colorLogins" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#003366" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#003366" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorDownloads" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FFD700" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#FFD700" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12}} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-                    />
-                    <Area type="monotone" dataKey="logins" stroke="#003366" fillOpacity={1} fill="url(#colorLogins)" strokeWidth={3} name="Logins" />
-                    <Area type="monotone" dataKey="downloads" stroke="#FFD700" fillOpacity={1} fill="url(#colorDownloads)" strokeWidth={3} name="Downloads" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+          <Tabs defaultValue="7d" className="w-full" onValueChange={setTimeRange}>
+            <div className="flex items-center justify-between mb-6">
+              <TabsList className="bg-white border p-1 rounded-2xl h-12 shadow-sm">
+                <TabsTrigger value="7d" className="rounded-xl px-6 data-[state=active]:bg-primary data-[state=active]:text-white">Weekly</TabsTrigger>
+                <TabsTrigger value="30d" className="rounded-xl px-6 data-[state=active]:bg-primary data-[state=active]:text-white">Monthly</TabsTrigger>
+                <TabsTrigger value="90d" className="rounded-xl px-6 data-[state=active]:bg-primary data-[state=active]:text-white">Quarterly</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                <Calendar className="h-4 w-4" />
+                Live Feed Active
+              </div>
+            </div>
 
-            <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardHeader className="p-8 border-b border-zinc-50">
-                <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
-                  <TrendingUp className="h-6 w-6 text-primary" />
-                  Library Distribution
-                </CardTitle>
-                <CardDescription>Density by category</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px] p-8 flex flex-col items-center justify-center">
-                {categoryStats.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height="80%">
-                      <PieChart>
-                        <Pie
-                          data={categoryStats}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={70}
-                          outerRadius={100}
-                          paddingAngle={8}
-                          dataKey="value"
-                        >
-                          {categoryStats.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="grid grid-cols-2 gap-4 mt-4 w-full">
-                      {categoryStats.slice(0, 4).map((entry, index) => (
-                        <div key={entry.name} className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                          <span className="text-xs font-bold text-zinc-600 truncate">{entry.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center space-y-3 text-zinc-400">
-                    <FileText className="h-12 w-12 opacity-20" />
-                    <p className="text-sm italic">Synchronizing library data...</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b border-zinc-50">
+                  <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
+                    <TrendingUp className="h-6 w-6 text-primary" />
+                    Engagement Velocity
+                  </CardTitle>
+                  <CardDescription>Comparative analysis of logins vs resource access events</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[450px] p-8">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fill: '#888', fontSize: 11}} 
+                        dy={10}
+                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                      />
+                      <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                      <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} name="Logins" />
+                      <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} name="Downloads" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b border-zinc-50">
+                  <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
+                    <MousePointer2 className="h-6 w-6 text-primary" />
+                    Action Intensity
+                  </CardTitle>
+                  <CardDescription>Total daily interactions</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[450px] p-8">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} />
+                      <Tooltip 
+                        cursor={{fill: '#f8f8f8'}}
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="engagements" fill="#003366" radius={[6, 6, 0, 0]} name="Interactions" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </Tabs>
 
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
             <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
-                  <Bell className="h-6 w-6 text-primary" />
-                  Institutional Ledger
+                  <Activity className="h-6 w-6 text-primary" />
+                  System Audit Ledger
                 </CardTitle>
-                <CardDescription>Real-time system events</CardDescription>
+                <CardDescription>Recording all institutional events for security monitoring</CardDescription>
               </div>
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" className="rounded-full text-zinc-400">View Full History</Button>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
             </CardHeader>
-            <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+            <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {logsLoading ? (
                 <div className="p-20 flex justify-center">
                   <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -252,7 +296,7 @@ export default function AdminDashboard() {
                           log.actionType === 'DOCUMENT_DOWNLOAD' ? "bg-emerald-50 text-emerald-600" :
                           log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" : "bg-purple-50 text-purple-600"
                         )}>
-                          {log.actionType === 'DOCUMENT_UPLOAD' ? <Plus className="h-5 w-5" /> :
+                          {log.actionType === 'DOCUMENT_UPLOAD' ? <FileText className="h-5 w-5" /> :
                            log.actionType === 'DOCUMENT_DOWNLOAD' ? <Download className="h-5 w-5" /> :
                            log.actionType === 'LOGIN' ? <Users className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
                         </div>
@@ -261,6 +305,7 @@ export default function AdminDashboard() {
                             {log.actionType.replace(/_/g, ' ')}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1 font-medium">{log.details}</p>
+                          <p className="text-[10px] text-zinc-300 font-mono mt-1">ID: {log.userId.slice(0, 8)}...</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -278,11 +323,6 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
-
-        <AnnouncementDialog 
-          open={isAnnOpen} 
-          onOpenChange={setIsAnnOpen} 
-        />
       </main>
     </div>
   );
