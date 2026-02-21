@@ -29,18 +29,41 @@ export default function LoginPage() {
 
   useEffect(() => {
     async function handleAuthFlow() {
-      // If we have a user and firestore, we handle the redirection logic.
-      if (user && firestore) {
-        try {
-          const userDocRef = doc(firestore, 'users', user.uid);
-          const userSnap = await getDoc(userDocRef);
-          const userData = userSnap.data();
+      if (!user || !firestore || isUserLoading) return;
 
-          // Check if account is blocked
-          if (userData?.status === 'blocked') {
+      try {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userSnap = await getDoc(userDocRef);
+        const userData = userSnap.data();
+
+        // 1. Check if account is blocked
+        if (userData?.status === 'blocked') {
+          toast({
+            title: "Account Blocked",
+            description: "Your account has been suspended. Please contact CICS administration.",
+            variant: "destructive"
+          });
+          await signOut(auth);
+          setIsAuthenticating(false);
+          return;
+        }
+
+        // 2. Admin Redirection Logic
+        if (targetRole === 'admin') {
+          const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
+          const adminSnap = await getDoc(adminRoleRef);
+
+          // Special handling for master admin if doc doesn't exist yet
+          if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
+            await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
+          }
+
+          const isAdmin = adminSnap.exists() || user.email === 'admin@neu.edu.ph';
+          
+          if (!isAdmin) {
             toast({
-              title: "Account Blocked",
-              description: "Your account has been suspended. Please contact CICS administration.",
+              title: "Unauthorized",
+              description: "You do not have administrator privileges.",
               variant: "destructive"
             });
             await signOut(auth);
@@ -48,101 +71,83 @@ export default function LoginPage() {
             return;
           }
 
-          if (targetRole === 'admin') {
-            const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
-            const adminSnap = await getDoc(adminRoleRef);
+          // Sync admin profile
+          await setDoc(userDocRef, {
+            id: user.uid,
+            email: user.email,
+            fullName: user.displayName || 'Administrator',
+            role: 'Admin',
+            status: 'active',
+            lastLoginAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          
+          logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
+          router.push('/admin/dashboard');
+          return;
+        }
 
-            // Special handling for master admin if doc doesn't exist yet
-            if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
-               await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
-            }
+        // 3. Student Redirection Logic
+        const userEmail = user.email || '';
+        // Allow @neu.edu.ph or development test accounts
+        const isAuthorizedDomain = userEmail.endsWith('@neu.edu.ph') || 
+                                   userEmail.includes('test') || 
+                                   userEmail.includes('neu');
 
-            const isAdmin = adminSnap.exists() || user.email === 'admin@neu.edu.ph';
-            
-            if (!isAdmin) {
-              toast({
-                title: "Unauthorized",
-                description: "You do not have administrator privileges.",
-                variant: "destructive"
-              });
-              await signOut(auth);
-              setIsAuthenticating(false);
-              return;
-            }
-
-            // Sync admin profile
+        if (isAuthorizedDomain) {
+          if (!userSnap.exists()) {
+            // New Student Profile creation
             await setDoc(userDocRef, {
               id: user.uid,
-              email: user.email,
-              fullName: user.displayName || 'Administrator',
-              role: 'Admin',
+              email: userEmail,
+              fullName: user.displayName || 'CICS Student',
+              role: 'Student',
               status: 'active',
+              createdAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              programIds: []
+            });
+          } else {
+            // Update existing student profile
+            await setDoc(userDocRef, {
               lastLoginAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true });
-            
-            // Only log if we were actively authenticating to avoid double logs on tab refresh
-            if (isAuthenticating) {
-              logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
-            }
-            router.push('/admin/dashboard');
-          } else {
-            const userEmail = user.email || '';
-            // Only allow @neu.edu.ph or specific test/dev accounts
-            if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test') || userEmail.includes('neu')) {
-              
-              if (!userSnap.exists()) {
-                await setDoc(userDocRef, {
-                  id: user.uid,
-                  email: userEmail,
-                  fullName: user.displayName || 'CICS Student',
-                  role: 'Student',
-                  status: 'active',
-                  createdAt: new Date().toISOString(),
-                  lastLoginAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  programIds: []
-                });
-              } else {
-                await setDoc(userDocRef, {
-                  lastLoginAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString()
-                }, { merge: true });
-              }
-
-              // Check if onboarding is needed
-              const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
-
-              if (isAuthenticating) {
-                logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
-              }
-              
-              if (needsOnboarding) {
-                router.push('/student/onboarding');
-              } else {
-                router.push('/student/documents');
-              }
-            } else {
-              toast({
-                title: "Invalid Domain",
-                description: "Students must use an @neu.edu.ph institutional account.",
-                variant: "destructive"
-              });
-              await signOut(auth);
-              setIsAuthenticating(false);
-            }
           }
-        } catch (error: any) {
-          console.error("Auth flow error:", error);
+
+          logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
+
+          // Check if onboarding is needed (no program assigned)
+          const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
+          
+          if (needsOnboarding) {
+            router.push('/student/onboarding');
+          } else {
+            router.push('/student/documents');
+          }
+        } else {
+          toast({
+            title: "Invalid Domain",
+            description: "Students must use an @neu.edu.ph institutional account.",
+            variant: "destructive"
+          });
+          await signOut(auth);
           setIsAuthenticating(false);
         }
+      } catch (error: any) {
+        console.error("Auth flow error:", error);
+        setIsAuthenticating(false);
+        toast({
+          title: "Session Error",
+          description: "Could not verify your institutional profile.",
+          variant: "destructive"
+        });
       }
     }
 
-    if (user && !isUserLoading) {
-      handleAuthFlow();
-    }
-  }, [user, isUserLoading, firestore, targetRole, router, auth, toast, isAuthenticating]);
+    handleAuthFlow();
+  }, [user, isUserLoading, firestore, targetRole, router, auth, toast]);
 
   const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
@@ -191,7 +196,7 @@ export default function LoginPage() {
     }
   };
 
-  if (isUserLoading || (user && !isUserLoading && (router as any).isPathChanging)) {
+  if (isUserLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">

@@ -55,6 +55,11 @@ export default function StudentDocuments() {
 
   useEffect(() => {
     async function checkOnboarding() {
+      if (!isUserLoading && !user) {
+        router.push('/login');
+        return;
+      }
+
       if (user && firestore) {
         const userSnap = await getDoc(doc(firestore, 'users', user.uid));
         const userData = userSnap.data();
@@ -65,13 +70,11 @@ export default function StudentDocuments() {
           return;
         } 
         
-        // Only set the default program once on initial load
+        // Default to student's program on first load
         if (!hasDefaultedProgram && userData.programIds.length > 0) {
           setSelectedProgram(userData.programIds[0]);
           setHasDefaultedProgram(true);
         }
-      } else if (!isUserLoading && !user) {
-        router.push('/login');
       }
     }
     checkOnboarding();
