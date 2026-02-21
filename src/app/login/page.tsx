@@ -196,6 +196,19 @@ function LoginContent() {
     }
   };
 
+  // If already logged in and waiting for handleAuthFlow logic to complete
+  if (!isUserLoading && user && !isAuthenticating) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
+          <p className="text-lg font-bold text-primary">Verifying session...</p>
+          <p className="text-muted-foreground">Please wait while we sync your institutional credentials.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
       <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-medium">
