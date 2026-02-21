@@ -105,19 +105,21 @@ export default function AdminDashboard() {
     if (!logs) return;
     
     const summary = [
-      ['Dashboard Summary Report'],
+      ['Institutional Dashboard Report'],
+      [''],
+      ['System Overview Summary'],
       ['Registered Students', studentCount],
       ['Documents Hosted', docCount],
       ['Total Downloads', totalDownloads],
       ['Active Inquiries', activeInquiries],
-      ['Generated On', new Date().toLocaleString()],
+      ['Report Generated On', new Date().toLocaleString()],
       [''],
-      ['Activity History']
+      ['System Audit Ledger']
     ];
 
-    const headers = ['Action', 'Name', 'Description', 'Time'];
+    const headers = ['Action', 'User Name', 'Institutional Details', 'Timestamp'];
     const rows = logs.map(log => {
-      const userName = users?.find(u => u.id === log.userId)?.fullName || 'System';
+      const userName = users?.find(u => u.id === log.userId)?.fullName || 'System User';
       return [
         log.actionType,
         userName,
@@ -136,7 +138,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `dashboard_report_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute('download', `institutional_audit_report_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -166,8 +168,8 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Admin Dashboard</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Quick overview of school activity and files.</p>
+              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
+              <p className="text-muted-foreground mt-1 text-lg">Central monitoring for institutional assets and student activity.</p>
             </div>
             <Button 
               variant="outline"
@@ -175,7 +177,7 @@ export default function AdminDashboard() {
               className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
             >
               <FileDown className="h-5 w-5 mr-2" />
-              Download CSV Report
+              Export Ledger CSV
             </Button>
           </header>
 
@@ -203,7 +205,7 @@ export default function AdminDashboard() {
                     <TrendingUp className="h-6 w-6" />
                     Usage Trends
                   </CardTitle>
-                  <CardDescription>Track logins and downloads over time</CardDescription>
+                  <CardDescription>Visualizing student engagement and asset usage velocity.</CardDescription>
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
@@ -229,8 +231,8 @@ export default function AdminDashboard() {
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                     />
                     <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
-                    <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Logins" />
-                    <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Downloads" />
+                    <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Institutional Logins" />
+                    <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Asset Accesses" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -240,9 +242,9 @@ export default function AdminDashboard() {
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <MousePointer2 className="h-6 w-6" />
-                  Documents by Type
+                  Documents Per Category
                 </CardTitle>
-                <CardDescription>File distribution by category</CardDescription>
+                <CardDescription>Knowledge asset distribution.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -275,9 +277,9 @@ export default function AdminDashboard() {
               <div>
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <Activity className="h-6 w-6" />
-                  Activity History
+                  System Audit Ledger
                 </CardTitle>
-                <CardDescription>Recent actions from students and staff</CardDescription>
+                <CardDescription>Immutable record of all system and user interactions.</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-0">

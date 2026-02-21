@@ -1,10 +1,10 @@
-
 'use server';
 
 import { put } from '@vercel/blob';
 
 /**
  * Server action to upload a file to Vercel Blob with public access.
+ * The institutional store uses the BLOB_READ_WRITE_TOKEN provided for security.
  * @param formData The form data containing the file and the intended path/name.
  * @returns The public URL of the uploaded blob.
  */
@@ -23,17 +23,13 @@ export async function uploadToBlob(formData: FormData) {
   }
 
   try {
-    // Check if the token is available in the environment
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error('Configuration Error: BLOB_READ_WRITE_TOKEN is not defined in the environment.');
-      throw new Error('Storage service is not configured. Please check environment variables.');
-    }
-
     // Switched to 'public' access as per the institutional storage requirements.
     // The token is automatically read from the BLOB_READ_WRITE_TOKEN environment variable.
+    // Explicitly passing the token here to ensure it's used correctly if auto-detection fails.
     const blob = await put(path, file, {
       access: 'public',
       addRandomSuffix: true,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
     return blob.url;
@@ -47,8 +43,8 @@ export async function uploadToBlob(formData: FormData) {
     });
 
     // Provide a more descriptive error message to the client
-    if (error.message.includes('Unexpected respond')) {
-      throw new Error('Storage provider returned an error. This usually indicates an invalid token or a temporary service issue.');
+    if (error.message.includes('Unexpected respond') || error.message.includes('401')) {
+      throw new Error('Storage provider authentication failed. Please verify the BLOB_READ_WRITE_TOKEN.');
     }
 
     throw new Error(error.message || 'An unexpected error occurred during the file upload.');
