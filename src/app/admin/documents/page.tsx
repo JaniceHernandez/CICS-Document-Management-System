@@ -203,7 +203,7 @@ export default function DocumentManagement() {
                                   <Edit className="h-4 w-4 mr-3" /> Edit Metadata
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary" asChild>
-                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                  <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
                                     <ExternalLink className="h-4 w-4 mr-3" /> External View
                                   </a>
                                 </DropdownMenuItem>
@@ -264,7 +264,7 @@ export default function DocumentManagement() {
               <Card className="border-none shadow-sm rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-zinc-50">
                   <CardTitle className="font-headline font-bold text-xl">Cloud Storage</CardTitle>
-                  <CardDescription>CICS Documents Infrastructure</CardDescription>
+                  <CardDescription>CICS Documents Infrastructure (Private)</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                   <div className="space-y-3">

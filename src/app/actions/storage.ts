@@ -1,13 +1,11 @@
-
 'use server';
 
 import { put } from '@vercel/blob';
 
 /**
- * Server action to upload a file to Vercel Blob.
- * This function runs on the server, ensuring the BLOB_READ_WRITE_TOKEN is not exposed to the client.
+ * Server action to upload a file to Vercel Blob with private access.
  * @param formData The form data containing the file and the intended path/name.
- * @returns The public URL of the uploaded blob.
+ * @returns The private URL of the uploaded blob.
  */
 export async function uploadToBlob(formData: FormData) {
   const file = formData.get('file') as File;
@@ -17,10 +15,10 @@ export async function uploadToBlob(formData: FormData) {
     throw new Error('No file provided for upload.');
   }
 
-  // We use access: 'public' so students can download the academic documents via the generated URL.
-  // The 'put' function automatically uses the BLOB_READ_WRITE_TOKEN from environment variables.
+  // Use access: 'private' as requested for secure institutional documents.
+  // The token is automatically read from the BLOB_READ_WRITE_TOKEN environment variable.
   const blob = await put(path, file, {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: true,
   });
 

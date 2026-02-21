@@ -32,7 +32,9 @@ import {
 import { summarizeDocument } from '@/ai/flows/summarize-document';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { logActivity } from '@/lib/activity-logging';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
@@ -66,8 +68,6 @@ export default function StudentDocuments() {
     setIsSummarizing(true);
     setSummary(null);
     try {
-      // In a real app, you'd fetch the PDF and convert to base64
-      // For this prototype, we'll use a placeholder or the actual flow with mock data if needed
       const result = await summarizeDocument({ pdfDataUri: "data:application/pdf;base64,JVBERi0xLjQKJ..." });
       setSummary(result.summary);
     } catch (error) {
@@ -79,6 +79,23 @@ export default function StudentDocuments() {
     } finally {
       setIsSummarizing(false);
     }
+  };
+
+  const handleDownload = (document: any) => {
+    if (!firestore || !user) return;
+    
+    // Log download activity
+    logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Downloaded: ${document.title}`, document.id);
+    
+    // Update download count
+    updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
+      downloadCount: (document.downloadCount || 0) + 1,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Use proxy for private blobs
+    const proxyUrl = `/api/blob?url=${encodeURIComponent(document.fileUrl)}`;
+    window.open(proxyUrl, '_blank');
   };
 
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
@@ -189,12 +206,10 @@ export default function StudentDocuments() {
                       </Button>
                       <Button 
                         className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
-                        asChild
+                        onClick={() => handleDownload(doc)}
                       >
-                        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </a>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
                       </Button>
                     </div>
                   </CardContent>
@@ -246,7 +261,7 @@ export default function StudentDocuments() {
               <p className="text-center font-medium">Official PDF Viewer Simulation</p>
               <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">In production, this renders the actual document.</p>
               <Button className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" asChild>
-                <a href={previewDoc?.fileUrl} target="_blank" rel="noopener noreferrer">
+                <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
                   Open Original File
                 </a>
               </Button>
@@ -289,11 +304,9 @@ export default function StudentDocuments() {
 
                 <div className="pt-6 border-t space-y-4">
                   <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Available Actions</p>
-                  <Button className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" asChild>
-                    <a href={previewDoc?.fileUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download for Offline
-                    </a>
+                  <Button className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" onClick={() => handleDownload(previewDoc)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download for Offline
                   </Button>
                 </div>
               </div>
