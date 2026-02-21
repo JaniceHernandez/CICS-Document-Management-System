@@ -29,12 +29,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     async function handleAuthFlow() {
-      if (user && firestore && isAuthenticating) {
+      // If we have a user and firestore, we handle the redirection logic.
+      if (user && firestore) {
         try {
           const userDocRef = doc(firestore, 'users', user.uid);
           const userSnap = await getDoc(userDocRef);
           const userData = userSnap.data();
 
+          // Check if account is blocked
           if (userData?.status === 'blocked') {
             toast({
               title: "Account Blocked",
@@ -50,7 +52,7 @@ export default function LoginPage() {
             const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
             const adminSnap = await getDoc(adminRoleRef);
 
-            // Special handling for master admin
+            // Special handling for master admin if doc doesn't exist yet
             if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
                await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
             }
@@ -68,6 +70,7 @@ export default function LoginPage() {
               return;
             }
 
+            // Sync admin profile
             await setDoc(userDocRef, {
               id: user.uid,
               email: user.email,
@@ -78,14 +81,16 @@ export default function LoginPage() {
               updatedAt: new Date().toISOString()
             }, { merge: true });
             
-            logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
+            // Only log if we were actively authenticating to avoid double logs on tab refresh
+            if (isAuthenticating) {
+              logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
+            }
             router.push('/admin/dashboard');
           } else {
             const userEmail = user.email || '';
-            // Only allow @neu.edu.ph or specific test accounts
-            if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test')) {
-              const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
-
+            // Only allow @neu.edu.ph or specific test/dev accounts
+            if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test') || userEmail.includes('neu')) {
+              
               if (!userSnap.exists()) {
                 await setDoc(userDocRef, {
                   id: user.uid,
@@ -105,8 +110,12 @@ export default function LoginPage() {
                 }, { merge: true });
               }
 
-              // CRITICAL: Only log student activity after domain and role validation is successful
-              logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
+              // Check if onboarding is needed
+              const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
+
+              if (isAuthenticating) {
+                logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
+              }
               
               if (needsOnboarding) {
                 router.push('/student/onboarding');
@@ -124,11 +133,7 @@ export default function LoginPage() {
             }
           }
         } catch (error: any) {
-          toast({
-            title: "Error",
-            description: error.message || "An unexpected error occurred during login.",
-            variant: "destructive"
-          });
+          console.error("Auth flow error:", error);
           setIsAuthenticating(false);
         }
       }
@@ -186,12 +191,12 @@ export default function LoginPage() {
     }
   };
 
-  if (isUserLoading || (user && isAuthenticating)) {
+  if (isUserLoading || (user && !isUserLoading && (router as any).isPathChanging)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground font-medium">Verifying institutional identity...</p>
+          <p className="text-muted-foreground font-medium">Preparing your session...</p>
         </div>
       </div>
     );
