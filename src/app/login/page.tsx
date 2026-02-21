@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock, AlertCircle } from 'lucide-react';
+import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { logActivity } from '@/lib/activity-logging';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,6 @@ export default function LoginPage() {
           const userSnap = await getDoc(userDocRef);
           const userData = userSnap.data();
 
-          // Check if account is blocked
           if (userData?.status === 'blocked') {
             toast({
               title: "Account Blocked",
@@ -50,7 +50,6 @@ export default function LoginPage() {
             const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
             const adminSnap = await getDoc(adminRoleRef);
 
-            // Provision admin role for prototype if using specific credentials
             if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
                await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
             }
@@ -78,13 +77,11 @@ export default function LoginPage() {
               updatedAt: new Date().toISOString()
             }, { merge: true });
             
+            logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
             router.push('/admin/dashboard');
           } else {
-            // Student Flow
             const userEmail = user.email || '';
             if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test')) {
-              
-              // Determine if onboarding is needed
               const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
 
               if (!userSnap.exists()) {
@@ -106,6 +103,8 @@ export default function LoginPage() {
                 }, { merge: true });
               }
 
+              logActivity(firestore, user.uid, 'LOGIN', 'Student login successful');
+              
               if (needsOnboarding) {
                 router.push('/student/onboarding');
               } else {
@@ -122,7 +121,6 @@ export default function LoginPage() {
             }
           }
         } catch (error: any) {
-          console.error(error);
           toast({
             title: "Error",
             description: error.message || "An unexpected error occurred during login.",
@@ -156,7 +154,6 @@ export default function LoginPage() {
 
   const handleAdminEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (email !== 'admin@neu.edu.ph' || password !== 'adminpassword') {
       toast({
         title: "Access Denied",
@@ -165,7 +162,6 @@ export default function LoginPage() {
       });
       return;
     }
-
     setIsAuthenticating(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -192,7 +188,7 @@ export default function LoginPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground font-medium">Verifying institutional identity...</p>
+          <p className="text-muted-foreground font-medium">Verifying identity...</p>
         </div>
       </div>
     );
@@ -202,7 +198,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
       <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-medium">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Home
+        Back
       </Link>
       
       <div className="w-full max-w-md space-y-8">
@@ -210,29 +206,18 @@ export default function LoginPage() {
           <div className="mx-auto w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/20 rotate-3">
             <ShieldCheck className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">CICS Docs Hub</h1>
-          <p className="text-muted-foreground mt-2 font-body text-lg">Secure Institutional Access</p>
+          <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">CICS Hub</h1>
+          <p className="text-muted-foreground mt-2 font-body text-lg">Institutional Access</p>
         </div>
 
         <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
           <CardHeader className="space-y-2 pb-8 pt-10 text-center">
-            <div className="flex justify-center mb-4">
-              {targetRole === 'admin' ? (
-                <div className="p-3 bg-zinc-900 rounded-2xl text-white">
-                  <ShieldCheck className="h-8 w-8" />
-                </div>
-              ) : (
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                  < GraduationCap className="h-8 w-8" />
-                </div>
-              )}
-            </div>
             <CardTitle className="text-2xl font-headline font-bold">
               {targetRole === 'admin' ? 'Admin Portal' : 'Student Access'}
             </CardTitle>
             <CardDescription className="text-base">
               {targetRole === 'admin' 
-                ? 'Authorized personnel only. Enter admin credentials.' 
+                ? 'Authorized personnel only.' 
                 : 'Sign in with your @neu.edu.ph account.'}
             </CardDescription>
           </CardHeader>
@@ -241,7 +226,7 @@ export default function LoginPage() {
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Admin Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -274,36 +259,19 @@ export default function LoginPage() {
                 </div>
                 <Button 
                   type="submit"
-                  className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full h-14 rounded-2xl font-bold text-lg"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                      Checking...
-                    </>
-                  ) : (
-                    'Enter Dashboard'
-                  )}
+                  {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Dashboard'}
                 </Button>
               </form>
             ) : (
               <Button 
-                className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                className="w-full h-14 rounded-2xl font-bold text-lg" 
                 onClick={handleGoogleLogin}
                 disabled={isAuthenticating}
               >
-                {isAuthenticating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="h-5 w-5 mr-3" />
-                    Continue with Google
-                  </>
-                )}
+                {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Continue with Google'}
               </Button>
             )}
           </CardContent>
@@ -311,9 +279,9 @@ export default function LoginPage() {
           <CardFooter className="bg-zinc-50/50 p-6 flex justify-center border-t">
             <Link 
               href={`/login?role=${targetRole === 'admin' ? 'student' : 'admin'}`}
-              className="text-sm font-bold text-primary hover:underline flex items-center gap-2"
+              className="text-sm font-bold text-primary hover:underline"
             >
-              {targetRole === 'admin' ? 'Switch to Student Login' : 'Switch to Admin Login'}
+              {targetRole === 'admin' ? 'Switch to Student' : 'Switch to Admin'}
             </Link>
           </CardFooter>
         </Card>

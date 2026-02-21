@@ -52,17 +52,20 @@ export default function StudentDocuments() {
   const [userProgramIds, setUserProgramIds] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Onboarding guard
+  // Onboarding guard and Login Tracking
   useEffect(() => {
-    async function checkOnboarding() {
+    async function checkOnboardingAndLog() {
       if (user && firestore) {
         const userSnap = await getDoc(doc(firestore, 'users', user.uid));
         const userData = userSnap.data();
+        
+        // Track login activity
+        logActivity(firestore, user.uid, 'LOGIN', 'Accessed student document library');
+
         if (!userData?.programIds || userData.programIds.length === 0) {
           router.push('/student/onboarding');
         } else {
           setUserProgramIds(userData.programIds);
-          // Set initial filter to user's program
           if (userData.programIds.length > 0 && selectedProgram === 'all') {
             setSelectedProgram(userData.programIds[0]);
           }
@@ -70,11 +73,10 @@ export default function StudentDocuments() {
       }
     }
     if (!isUserLoading) {
-      checkOnboarding();
+      checkOnboardingAndLog();
     }
   }, [user, isUserLoading, firestore, router]);
 
-  // Firestore Queries
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
@@ -97,22 +99,17 @@ export default function StudentDocuments() {
     try {
       const response = await fetch(`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}`);
       if (!response.ok) throw new Error('Failed to fetch document');
-      
       const blob = await response.blob();
-      
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      
       const pdfDataUri = await base64Promise;
-
       const result = await summarizeDocument({ pdfDataUri });
       setSummary(result.summary);
     } catch (error) {
-      console.error('Summarization Error:', error);
       toast({
         title: "Summarization Error",
         description: "Could not generate summary at this time.",
@@ -125,9 +122,7 @@ export default function StudentDocuments() {
 
   const handleActionClick = (document: any) => {
     if (!firestore || !user) return;
-    
     logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Accessed: ${document.title}`, document.id);
-    
     updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
       downloadCount: (document.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
@@ -152,7 +147,7 @@ export default function StudentDocuments() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">CICS Document Library</h1>
+              <h1 className="text-3xl font-headline font-bold text-primary">Document Library</h1>
               <p className="text-muted-foreground">Search and access official academic resources.</p>
             </div>
             <div className="flex gap-4 items-center">
@@ -166,7 +161,7 @@ export default function StudentDocuments() {
               )}
               <div className="flex gap-2 bg-secondary/10 p-2 rounded-2xl items-center border border-secondary/20">
                 <Sparkles className="h-5 w-5 text-secondary animate-pulse" />
-                <span className="text-sm font-medium text-primary">AI Summarization Enabled</span>
+                <span className="text-sm font-medium text-primary">AI Summaries Enabled</span>
               </div>
             </div>
           </header>
@@ -177,7 +172,7 @@ export default function StudentDocuments() {
                 <div className="md:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
-                    placeholder="Search documents by name or keyword..." 
+                    placeholder="Search documents by name..." 
                     className="pl-10 h-11 rounded-xl bg-background border-zinc-200"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -212,7 +207,7 @@ export default function StudentDocuments() {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-              <p className="text-muted-foreground">Loading academic documents...</p>
+              <p className="text-muted-foreground">Loading documents...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -223,13 +218,6 @@ export default function StudentDocuments() {
                       <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
                         {getCategoryName(doc.categoryId)}
                       </Badge>
-                      <div className="flex gap-1">
-                        {doc.programIds?.map((pid: string) => (
-                          <Badge key={pid} variant="outline" className="border-primary/20 text-primary text-[10px] h-5">
-                            {programs?.find(p => p.id === pid)?.shortCode}
-                          </Badge>
-                        ))}
-                      </div>
                     </div>
                     <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
                       {doc.title}
@@ -245,17 +233,12 @@ export default function StudentDocuments() {
                         <FileText className="h-4 w-4" />
                         PDF
                       </div>
-                      <div className="text-xs">
-                        {new Date(doc.uploadDate).toLocaleDateString()}
-                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Button 
                         variant="outline" 
                         className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
-                        onClick={() => {
-                          setPreviewDoc(doc);
-                        }}
+                        onClick={() => setPreviewDoc(doc)}
                       >
                         <Eye className="h-4 w-4" />
                         Preview
@@ -274,23 +257,6 @@ export default function StudentDocuments() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          )}
-
-          {!isLoading && filteredDocs?.length === 0 && (
-            <div className="text-center py-20 space-y-4">
-              <div className="bg-zinc-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-zinc-400">
-                <Search className="h-10 w-10" />
-              </div>
-              <h3 className="text-xl font-headline font-bold">No documents found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
-              <Button 
-                variant="outline" 
-                className="rounded-full"
-                onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setSelectedProgram('all'); }}
-              >
-                Clear all filters
-              </Button>
             </div>
           )}
         </div>
@@ -315,8 +281,7 @@ export default function StudentDocuments() {
           <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
             <div className="flex-1 bg-zinc-800 flex flex-col items-center justify-center text-white p-12 min-h-[400px]">
               <FileText className="h-24 w-24 opacity-20 mb-4" />
-              <p className="text-center font-medium">Institutional PDF Viewer</p>
-              <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">Document is loaded securely from cloud storage.</p>
+              <p className="text-center font-medium">Document Preview</p>
               <Button 
                 className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" 
                 asChild
@@ -339,11 +304,11 @@ export default function StudentDocuments() {
                 </div>
                 
                 <div className="space-y-4">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Document Insights</p>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Summary</p>
                   {isSummarizing ? (
                     <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-primary/5 rounded-2xl border border-dashed border-primary/20">
                       <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                      <p className="text-xs text-primary font-medium text-center px-4">Analyzing content and extracting key takeaways...</p>
+                      <p className="text-xs text-primary font-medium text-center px-4">Analyzing content...</p>
                     </div>
                   ) : summary ? (
                     <div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 shadow-sm">
@@ -351,7 +316,7 @@ export default function StudentDocuments() {
                     </div>
                   ) : (
                     <div className="bg-zinc-50 p-8 rounded-2xl text-center space-y-4 border border-zinc-100">
-                      <p className="text-xs text-muted-foreground italic">Short on time? Let our AI summarize this document for you instantly.</p>
+                      <p className="text-xs text-muted-foreground italic">Get an instant AI summary of this document.</p>
                       <Button 
                         onClick={handleSummarize}
                         className="w-full bg-primary text-white rounded-xl font-bold h-11"
@@ -364,7 +329,7 @@ export default function StudentDocuments() {
                 </div>
 
                 <div className="pt-6 border-t space-y-4">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Available Actions</p>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Actions</p>
                   <Button 
                     className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" 
                     asChild
