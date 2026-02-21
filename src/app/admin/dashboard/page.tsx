@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { format, subDays, isSameDay } from 'date-fns';
+import { format, subDays, isSameDay, startOfDay } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -40,12 +40,12 @@ const COLORS = ['#003366', '#FFD700', '#004080', '#FFC107', '#002244'];
 export default function AdminDashboard() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [timeRange, setTimeRange] = useState('daily');
+  const [timeRange, setTimeRange] = useState('weekly');
 
   // Firestore Queries
   const activityLogsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(100));
+    return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(500));
   }, [firestore, user]);
 
   const allUsersQuery = useMemoFirebase(() => {
@@ -82,12 +82,18 @@ export default function AdminDashboard() {
 
   // Trend Data Generation based on TimeRange
   const getTrendData = () => {
-    const now = new Date();
-    let days = timeRange === 'daily' ? 7 : timeRange === 'weekly' ? 30 : 90;
-    const interval = Array.from({ length: days }, (_, i) => subDays(now, i)).reverse();
+    // We use startOfDay to ensure consistent date comparisons across different times of the day
+    const today = startOfDay(new Date());
+    let days = timeRange === 'weekly' ? 7 : timeRange === 'monthly' ? 30 : 90;
+    
+    // Generate the interval of days to display
+    const interval = Array.from({ length: days }, (_, i) => subDays(today, i)).reverse();
     
     return interval.map(date => {
+      // Filter logs that happened on this specific day
+      // Ensure we parse the log timestamp correctly
       const dayLogs = logs?.filter(log => isSameDay(new Date(log.timestamp), date)) || [];
+      
       return {
         date: format(date, days > 30 ? 'MMM dd' : 'MMM dd'),
         logins: dayLogs.filter(l => l.actionType === 'LOGIN').length,
@@ -111,7 +117,7 @@ export default function AdminDashboard() {
     // Summary Section
     const summary = [
       ['System Overview Summary'],
-      ['Total Students', studentCount],
+      ['Registered Students', studentCount],
       ['Documents Hosted', docCount],
       ['Total Downloads', totalDownloads],
       ['Active Inquiries', activeInquiries],
@@ -157,7 +163,7 @@ export default function AdminDashboard() {
   }
 
   const stats = [
-    { label: 'Total Students', value: studentCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100/50' },
+    { label: 'Registered Students', value: studentCount, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100/50' },
     { label: 'Documents Hosted', value: docCount, icon: FileText, color: 'text-purple-600', bg: 'bg-purple-100/50' },
     { label: 'Total Downloads', value: totalDownloads, icon: Download, color: 'text-emerald-600', bg: 'bg-emerald-100/50' },
     { label: 'Active Inquiries', value: activeInquiries, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-100/50' },
@@ -208,12 +214,12 @@ export default function AdminDashboard() {
                     <TrendingUp className="h-6 w-6" />
                     Engagement Velocity
                   </CardTitle>
-                  <CardDescription>Daily logins and document download patterns</CardDescription>
+                  <CardDescription>Visualizing login and download patterns</CardDescription>
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
-                    <TabsTrigger value="daily" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Daily</TabsTrigger>
                     <TabsTrigger value="weekly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Weekly</TabsTrigger>
+                    <TabsTrigger value="monthly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Monthly</TabsTrigger>
                     <TabsTrigger value="quarterly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Quarterly</TabsTrigger>
                   </TabsList>
                 </Tabs>
