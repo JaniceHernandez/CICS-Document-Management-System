@@ -1,9 +1,11 @@
+
 import { type NextRequest, NextResponse } from 'next/server';
 import { head } from '@vercel/blob';
 
 /**
- * API Route to proxy private Vercel Blob files.
- * This allows the client to access private blobs using the server's token.
+ * API Route to proxy Vercel Blob files.
+ * Even for public blobs, this allows us to set custom headers like Content-Disposition
+ * to ensure files download with their original names.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,8 +19,8 @@ export async function GET(request: NextRequest) {
     // Get metadata to set correct headers
     const metadata = await head(url);
 
-    // Fetch the actual content from the private URL
-    // We must pass the token in the headers for private access
+    // Fetch the content. Since it's public, we don't strictly need the token 
+    // for simple GET, but we use it to maintain the same secure pattern.
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch blob from Vercel: ${response.statusText}`);
+      throw new Error(`Failed to fetch blob: ${response.statusText}`);
     }
 
     // Proxy the stream to the client

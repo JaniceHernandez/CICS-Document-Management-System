@@ -45,14 +45,12 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   
-  // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
 
-  // Firestore Lookups
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
   const { data: categories } = useCollection(categoriesQuery);
@@ -123,7 +121,6 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
       let fileName = editDoc?.fileName || 'unknown';
       let fileSize = editDoc?.fileSize || 0;
 
-      // Upload to Vercel Blob if new file provided via Server Action
       if (file) {
         const formData = new FormData();
         formData.append('file', file);
@@ -185,7 +182,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             </DialogTitle>
           </div>
           <DialogDescription className="text-white/70 text-base">
-            Configure institutional metadata and Vercel Blob synchronization for PDF assets.
+            Configure institutional metadata and Vercel Blob synchronization (Public Access).
           </DialogDescription>
         </DialogHeader>
 
@@ -322,7 +319,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             <div className="space-y-1">
               <p className="text-sm font-bold text-amber-900">Deployment Notice</p>
               <p className="text-xs text-amber-700 leading-relaxed">
-                By publishing, this document will be instantly accessible to students in the targeted programs. All uploads are audit-logged in the activity ledger.
+                By publishing, this document will be instantly accessible to students in the targeted programs. Assets are stored in public cloud storage.
               </p>
             </div>
           </div>
