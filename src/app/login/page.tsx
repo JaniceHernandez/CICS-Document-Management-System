@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { logActivity } from '@/lib/activity-logging';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { auth, firestore } = useFirebase();
@@ -196,17 +196,6 @@ export default function LoginPage() {
     }
   };
 
-  if (isUserLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground font-medium">Preparing your session...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
       <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-medium">
@@ -301,5 +290,17 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
