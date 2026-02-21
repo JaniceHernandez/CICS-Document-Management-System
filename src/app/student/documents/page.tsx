@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -11,11 +12,10 @@ import {
   FileText, 
   Download, 
   Eye, 
-  Sparkles,
   Loader2,
   X,
-  ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { 
   Select, 
@@ -32,7 +32,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { summarizeDocument } from '@/ai/flows/summarize-document';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, getDoc } from 'firebase/firestore';
@@ -47,33 +46,25 @@ export default function StudentDocuments() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProgram, setSelectedProgram] = useState('all');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [userProgramIds, setUserProgramIds] = useState<string[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const { toast } = useToast();
 
-  // Onboarding guard and Login Tracking
   useEffect(() => {
-    async function checkOnboardingAndLog() {
+    async function checkOnboarding() {
       if (user && firestore) {
         const userSnap = await getDoc(doc(firestore, 'users', user.uid));
         const userData = userSnap.data();
-        
-        // Track login activity
-        logActivity(firestore, user.uid, 'LOGIN', 'Accessed student document library');
+        setUserProfile(userData);
 
         if (!userData?.programIds || userData.programIds.length === 0) {
           router.push('/student/onboarding');
-        } else {
-          setUserProgramIds(userData.programIds);
-          if (userData.programIds.length > 0 && selectedProgram === 'all') {
-            setSelectedProgram(userData.programIds[0]);
-          }
+        } else if (selectedProgram === 'all') {
+          setSelectedProgram(userData.programIds[0]);
         }
       }
     }
     if (!isUserLoading) {
-      checkOnboardingAndLog();
+      checkOnboarding();
     }
   }, [user, isUserLoading, firestore, router]);
 
@@ -92,40 +83,36 @@ export default function StudentDocuments() {
     return matchesSearch && matchesCategory && matchesProgram;
   });
 
-  const handleSummarize = async () => {
-    if (!previewDoc) return;
-    setIsSummarizing(true);
-    setSummary(null);
-    try {
-      const response = await fetch(`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}`);
-      if (!response.ok) throw new Error('Failed to fetch document');
-      const blob = await response.blob();
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      const pdfDataUri = await base64Promise;
-      const result = await summarizeDocument({ pdfDataUri });
-      setSummary(result.summary);
-    } catch (error) {
-      toast({
-        title: "Summarization Error",
-        description: "Could not generate summary at this time.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
+  const handleDownload = (document: any) => {
+    if (!firestore || !user || !document) return;
 
-  const handleActionClick = (document: any) => {
-    if (!firestore || !user) return;
-    logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Accessed: ${document.title}`, document.id);
+    // Log the download activity
+    logActivity(
+      firestore, 
+      user.uid, 
+      'DOCUMENT_DOWNLOAD', 
+      `${userProfile?.fullName || user.email} Downloaded Document: ${document.title}`, 
+      document.id
+    );
+
+    // Update download count in Firestore
     updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
       downloadCount: (document.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
+    });
+
+    // Trigger the actual download via the proxy
+    const downloadUrl = `/api/blob?url=${encodeURIComponent(document.fileUrl)}&download=true`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', document.fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Download Initiated",
+      description: `Downloading ${document.title}...`,
     });
   };
 
@@ -151,18 +138,14 @@ export default function StudentDocuments() {
               <p className="text-muted-foreground">Search and access official academic resources.</p>
             </div>
             <div className="flex gap-4 items-center">
-              {userProgramIds.length > 0 && (
+              {userProfile?.programIds?.length > 0 && (
                 <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />
                   <span className="text-xs font-bold text-primary">
-                    {programs?.find(p => p.id === userProgramIds[0])?.shortCode} Portal
+                    {programs?.find(p => p.id === userProfile.programIds[0])?.shortCode} Portal
                   </span>
                 </div>
               )}
-              <div className="flex gap-2 bg-secondary/10 p-2 rounded-2xl items-center border border-secondary/20">
-                <Sparkles className="h-5 w-5 text-secondary animate-pulse" />
-                <span className="text-sm font-medium text-primary">AI Summaries Enabled</span>
-              </div>
             </div>
           </header>
 
@@ -245,13 +228,10 @@ export default function StudentDocuments() {
                       </Button>
                       <Button 
                         className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
-                        asChild
-                        onClick={() => handleActionClick(doc)}
+                        onClick={() => handleDownload(doc)}
                       >
-                        <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2" />
-                          Open
-                        </a>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
                       </Button>
                     </div>
                   </CardContent>
@@ -262,9 +242,9 @@ export default function StudentDocuments() {
         </div>
       </main>
 
-      <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) { setPreviewDoc(null); setSummary(null); } }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
-          <DialogHeader className="p-6 bg-primary text-white">
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
+          <DialogHeader className="p-6 bg-primary text-white shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
@@ -278,68 +258,59 @@ export default function StudentDocuments() {
             </div>
           </DialogHeader>
           
-          <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-            <div className="flex-1 bg-zinc-800 flex flex-col items-center justify-center text-white p-12 min-h-[400px]">
-              <FileText className="h-24 w-24 opacity-20 mb-4" />
-              <p className="text-center font-medium">Document Preview</p>
-              <Button 
-                className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" 
-                asChild
-                onClick={() => handleActionClick(previewDoc)}
-              >
-                <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open Document
-                </a>
-              </Button>
+          <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-zinc-50">
+            {/* Embedded PDF Viewer */}
+            <div className="flex-1 bg-zinc-800 relative overflow-hidden">
+              {previewDoc && (
+                <iframe 
+                  src={`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}#toolbar=0`}
+                  className="w-full h-full border-none"
+                  title={previewDoc.title}
+                />
+              )}
             </div>
 
-            <div className="w-full md:w-96 bg-background border-l p-6 overflow-y-auto">
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 text-primary font-bold">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  AI Assistant
-                </div>
-                
+            {/* Document Details Sidebar */}
+            <div className="w-full md:w-80 bg-background border-l p-8 overflow-y-auto">
+              <div className="space-y-8">
                 <div className="space-y-4">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Summary</p>
-                  {isSummarizing ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-primary/5 rounded-2xl border border-dashed border-primary/20">
-                      <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                      <p className="text-xs text-primary font-medium text-center px-4">Analyzing content...</p>
-                    </div>
-                  ) : summary ? (
-                    <div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 shadow-sm">
-                      <p className="text-sm text-primary leading-relaxed">{summary}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-zinc-50 p-8 rounded-2xl text-center space-y-4 border border-zinc-100">
-                      <p className="text-xs text-muted-foreground italic">Get an instant AI summary of this document.</p>
-                      <Button 
-                        onClick={handleSummarize}
-                        className="w-full bg-primary text-white rounded-xl font-bold h-11"
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Summarize Now
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-primary font-bold">
+                    <Info className="h-5 w-5" />
+                    Document Description
+                  </div>
+                  <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 shadow-inner">
+                    <p className="text-sm text-zinc-600 leading-relaxed italic">
+                      {previewDoc?.description || "No description provided for this institutional resource."}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="pt-6 border-t space-y-4">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Actions</p>
+                <div className="space-y-4 pt-6 border-t">
+                  <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    <span>Classification</span>
+                    <Badge variant="outline" className="text-[10px] py-0">{getCategoryName(previewDoc?.categoryId)}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    <span>File Size</span>
+                    <span>{previewDoc && (previewDoc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    <span>Downloads</span>
+                    <span className="text-primary">{previewDoc?.downloadCount || 0}</span>
+                  </div>
+                </div>
+
+                <div className="pt-6">
                   <Button 
-                    className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" 
-                    asChild
-                    onClick={() => handleActionClick(previewDoc)}
+                    className="w-full bg-secondary text-primary hover:bg-secondary/90 font-bold h-14 rounded-2xl shadow-xl shadow-secondary/20 transition-all hover:scale-[1.02]" 
+                    onClick={() => handleDownload(previewDoc)}
                   >
-                    <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download Copy
-                    </a>
+                    <Download className="h-5 w-5 mr-3" />
+                    Download Copy
                   </Button>
+                  <p className="text-[10px] text-center text-muted-foreground mt-4 leading-tight uppercase font-bold tracking-tighter">
+                    Download recorded for institutional audit
+                  </p>
                 </div>
               </div>
             </div>
