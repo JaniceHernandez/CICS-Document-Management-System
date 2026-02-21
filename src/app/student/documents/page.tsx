@@ -300,18 +300,22 @@ export default function StudentDocuments() {
 
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
-          <DialogHeader className="p-6 bg-primary text-white shrink-0">
-            <div className="flex items-center justify-between">
+          <DialogHeader className="p-6 bg-primary text-white shrink-0 relative">
+            <div className="flex items-center justify-between pr-8">
               <div>
                 <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
                 <DialogDescription className="text-white/70">
                   Uploaded on {previewDoc && new Date(previewDoc.uploadDate).toLocaleDateString()}
                 </DialogDescription>
               </div>
-              <Button variant="ghost" className="text-white hover:bg-white/20 h-10 w-10 p-0" onClick={() => setPreviewDoc(null)}>
-                <X className="h-6 w-6" />
-              </Button>
             </div>
+            <Button 
+              variant="ghost" 
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" 
+              onClick={() => setPreviewDoc(null)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
           </DialogHeader>
           
           <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-zinc-50">
