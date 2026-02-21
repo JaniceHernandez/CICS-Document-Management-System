@@ -28,7 +28,7 @@ import { collection, doc } from 'firebase/firestore';
 import { uploadToBlob } from '@/app/actions/storage';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { Loader2, Upload, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
