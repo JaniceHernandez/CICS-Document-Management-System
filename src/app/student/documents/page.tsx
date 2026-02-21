@@ -49,6 +49,7 @@ export default function StudentDocuments() {
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [hasDefaultedProgram, setHasDefaultedProgram] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,15 +61,21 @@ export default function StudentDocuments() {
 
         if (!userData?.programIds || userData.programIds.length === 0) {
           router.push('/student/onboarding');
-        } else if (selectedProgram === 'all') {
+          return;
+        } 
+        
+        // Only set the default program once on initial load to avoid forcing the filter
+        // when the user manually tries to change it to "all".
+        if (!hasDefaultedProgram && userData.programIds.length > 0) {
           setSelectedProgram(userData.programIds[0]);
+          setHasDefaultedProgram(true);
         }
       }
     }
     if (!isUserLoading) {
       checkOnboarding();
     }
-  }, [user, isUserLoading, firestore, router, selectedProgram]);
+  }, [user, isUserLoading, firestore, router, hasDefaultedProgram]);
 
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
@@ -149,8 +156,8 @@ export default function StudentDocuments() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">Document Library</h1>
-              <p className="text-muted-foreground">Search and access official academic resources.</p>
+              <h1 className="text-3xl font-headline font-bold text-primary">Library</h1>
+              <p className="text-muted-foreground">Search and access official school resources.</p>
             </div>
             <div className="flex gap-4 items-center">
               {userProfile?.programIds?.length > 0 && (
@@ -170,7 +177,7 @@ export default function StudentDocuments() {
                 <div className="md:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
-                    placeholder="Search documents by name..." 
+                    placeholder="Search documents..." 
                     className="pl-10 h-11 rounded-xl bg-background border-zinc-200"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -178,7 +185,7 @@ export default function StudentDocuments() {
                 </div>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
-                    <SelectValue placeholder="Category" />
+                    <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
@@ -189,7 +196,7 @@ export default function StudentDocuments() {
                 </Select>
                 <Select value={selectedProgram} onValueChange={setSelectedProgram}>
                   <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
-                    <SelectValue placeholder="Program" />
+                    <SelectValue placeholder="All Programs" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Programs</SelectItem>
@@ -304,22 +311,22 @@ export default function StudentDocuments() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-primary font-bold">
                     <Info className="h-5 w-5" />
-                    Document Description
+                    Details
                   </div>
                   <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 shadow-inner">
                     <p className="text-sm text-zinc-600 leading-relaxed italic">
-                      {previewDoc?.description || "No description provided for this institutional resource."}
+                      {previewDoc?.description || "No description provided."}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t">
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>Classification</span>
+                    <span>Category</span>
                     <Badge variant="outline" className="text-[10px] py-0">{getCategoryName(previewDoc?.categoryId)}</Badge>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>File Size</span>
+                    <span>Size</span>
                     <span>{previewDoc && (previewDoc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
@@ -336,9 +343,6 @@ export default function StudentDocuments() {
                     <Download className="h-5 w-5 mr-3" />
                     Download Copy
                   </Button>
-                  <p className="text-[10px] text-center text-muted-foreground mt-4 leading-tight uppercase font-bold tracking-tighter">
-                    Download recorded for institutional audit
-                  </p>
                 </div>
               </div>
             </div>
