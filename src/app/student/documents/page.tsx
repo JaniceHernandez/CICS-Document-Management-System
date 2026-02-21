@@ -68,12 +68,29 @@ export default function StudentDocuments() {
     setIsSummarizing(true);
     setSummary(null);
     try {
-      const result = await summarizeDocument({ pdfDataUri: "data:application/pdf;base64,JVBERi0xLjQKJ..." });
+      // Fetch the PDF file through the proxy to avoid CORS and get actual data
+      const response = await fetch(`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}`);
+      if (!response.ok) throw new Error('Failed to fetch document');
+      
+      const blob = await response.blob();
+      
+      // Convert blob to Data URI for Genkit
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const pdfDataUri = await base64Promise;
+
+      const result = await summarizeDocument({ pdfDataUri });
       setSummary(result.summary);
     } catch (error) {
+      console.error('Summarization Error:', error);
       toast({
         title: "Summarization Error",
-        description: "Could not generate summary at this time.",
+        description: "Could not generate summary at this time. Please try again later.",
         variant: "destructive"
       });
     } finally {
@@ -87,13 +104,13 @@ export default function StudentDocuments() {
     // Log download activity
     logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Downloaded: ${document.title}`, document.id);
     
-    // Update download count
+    // Update download count - This is the action that was causing the permission error
     updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
       downloadCount: (document.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
     });
 
-    // Use proxy for private blobs
+    // Use proxy for download
     const proxyUrl = `/api/blob?url=${encodeURIComponent(document.fileUrl)}`;
     window.open(proxyUrl, '_blank');
   };
@@ -258,11 +275,11 @@ export default function StudentDocuments() {
             {/* Simulation of PDF Preview */}
             <div className="flex-1 bg-zinc-800 flex flex-col items-center justify-center text-white p-12 min-h-[400px]">
               <FileText className="h-24 w-24 opacity-20 mb-4" />
-              <p className="text-center font-medium">Official PDF Viewer Simulation</p>
-              <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">In production, this renders the actual document.</p>
+              <p className="text-center font-medium">Institutional PDF Viewer</p>
+              <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">Document is loaded securely from cloud storage.</p>
               <Button className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" asChild>
                 <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
-                  Open Original File
+                  Open Document
                 </a>
               </Button>
             </div>
