@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -81,6 +82,7 @@ export default function LoginPage() {
             router.push('/admin/dashboard');
           } else {
             const userEmail = user.email || '';
+            // Only allow @neu.edu.ph or specific test accounts
             if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test')) {
               const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
 
@@ -103,7 +105,8 @@ export default function LoginPage() {
                 }, { merge: true });
               }
 
-              logActivity(firestore, user.uid, 'LOGIN', 'Student login successful');
+              // CRITICAL: Only log student activity after domain and role validation is successful
+              logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
               
               if (needsOnboarding) {
                 router.push('/student/onboarding');

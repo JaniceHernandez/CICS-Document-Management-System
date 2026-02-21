@@ -15,7 +15,8 @@ import {
   Loader2,
   X,
   ShieldCheck,
-  Info
+  Info,
+  ArrowUpDown
 } from 'lucide-react';
 import { 
   Select, 
@@ -45,6 +46,7 @@ export default function StudentDocuments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProgram, setSelectedProgram] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const { toast } = useToast();
@@ -66,7 +68,7 @@ export default function StudentDocuments() {
     if (!isUserLoading) {
       checkOnboarding();
     }
-  }, [user, isUserLoading, firestore, router]);
+  }, [user, isUserLoading, firestore, router, selectedProgram]);
 
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
@@ -83,36 +85,49 @@ export default function StudentDocuments() {
     return matchesSearch && matchesCategory && matchesProgram;
   });
 
-  const handleDownload = (document: any) => {
-    if (!firestore || !user || !document) return;
+  const sortedDocs = filteredDocs?.sort((a, b) => {
+    if (sortBy === 'recent') {
+      return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
+    }
+    if (sortBy === 'downloads') {
+      return (b.downloadCount || 0) - (a.downloadCount || 0);
+    }
+    if (sortBy === 'alpha') {
+      return a.title.localeCompare(b.title);
+    }
+    return 0;
+  });
+
+  const handleDownload = (documentData: any) => {
+    if (!firestore || !user || !documentData) return;
 
     // Log the download activity
     logActivity(
       firestore, 
       user.uid, 
       'DOCUMENT_DOWNLOAD', 
-      `${userProfile?.fullName || user.email} Downloaded Document: ${document.title}`, 
-      document.id
+      `${userProfile?.fullName || user.email} Downloaded Document: ${documentData.title}`, 
+      documentData.id
     );
 
     // Update download count in Firestore
-    updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
-      downloadCount: (document.downloadCount || 0) + 1,
+    updateDocumentNonBlocking(doc(firestore, 'documents', documentData.id), {
+      downloadCount: (documentData.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
     });
 
     // Trigger the actual download via the proxy
-    const downloadUrl = `/api/blob?url=${encodeURIComponent(document.fileUrl)}&download=true`;
+    const downloadUrl = `/api/blob?url=${encodeURIComponent(documentData.fileUrl)}&download=true`;
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.setAttribute('download', document.fileName);
+    link.setAttribute('download', documentData.fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     toast({
       title: "Download Initiated",
-      description: `Downloading ${document.title}...`,
+      description: `Downloading ${documentData.title}...`,
     });
   };
 
@@ -151,7 +166,7 @@ export default function StudentDocuments() {
 
           <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
@@ -183,6 +198,19 @@ export default function StudentDocuments() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Sort By" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Recently Uploaded</SelectItem>
+                    <SelectItem value="downloads">Most Downloaded</SelectItem>
+                    <SelectItem value="alpha">Alphabetical</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -194,23 +222,23 @@ export default function StudentDocuments() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredDocs?.map((doc) => (
-                <Card key={doc.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
+              {sortedDocs?.map((docData) => (
+                <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
                   <CardHeader className="p-6 pb-2">
                     <div className="flex justify-between items-start mb-2">
                       <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
-                        {getCategoryName(doc.categoryId)}
+                        {getCategoryName(docData.categoryId)}
                       </Badge>
                     </div>
                     <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
-                      {doc.title}
+                      {docData.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 pt-2">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <div className="flex items-center gap-1">
                         <Download className="h-4 w-4" />
-                        {doc.downloadCount || 0}
+                        {docData.downloadCount || 0}
                       </div>
                       <div className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
@@ -221,14 +249,14 @@ export default function StudentDocuments() {
                       <Button 
                         variant="outline" 
                         className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
-                        onClick={() => setPreviewDoc(doc)}
+                        onClick={() => setPreviewDoc(docData)}
                       >
                         <Eye className="h-4 w-4" />
                         Preview
                       </Button>
                       <Button 
                         className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
-                        onClick={() => handleDownload(doc)}
+                        onClick={() => handleDownload(docData)}
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Download
