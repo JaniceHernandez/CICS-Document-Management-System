@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -105,9 +106,8 @@ export default function AdminDashboard() {
     if (!logs) return;
     
     const summary = [
-      ['Institutional Dashboard Report'],
-      [''],
       ['System Overview Summary'],
+      [''],
       ['Registered Students', studentCount],
       ['Documents Hosted', docCount],
       ['Total Downloads', totalDownloads],
@@ -117,13 +117,13 @@ export default function AdminDashboard() {
       ['System Audit Ledger']
     ];
 
-    const headers = ['Action', 'User Name', 'Institutional Details', 'Timestamp'];
+    const headers = ['Action Description', 'User Name', 'Institutional Details', 'Timestamp'];
     const rows = logs.map(log => {
       const userName = users?.find(u => u.id === log.userId)?.fullName || 'System User';
       return [
-        log.actionType,
+        log.details,
         userName,
-        `"${log.details.replace(/"/g, '""')}"`,
+        log.actionType,
         log.timestamp
       ];
     });
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `institutional_audit_report_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute('download', `system_audit_ledger_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Central monitoring for institutional assets and student activity.</p>
+              <p className="text-muted-foreground mt-1 text-lg">General activity and usage monitoring for the college.</p>
             </div>
             <Button 
               variant="outline"
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
                     <TrendingUp className="h-6 w-6" />
                     Usage Trends
                   </CardTitle>
-                  <CardDescription>Visualizing student engagement and asset usage velocity.</CardDescription>
+                  <CardDescription>Logins and document interactions over time.</CardDescription>
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
@@ -231,8 +231,8 @@ export default function AdminDashboard() {
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                     />
                     <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
-                    <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Institutional Logins" />
-                    <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Asset Accesses" />
+                    <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Logins" />
+                    <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Downloads" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
                   <MousePointer2 className="h-6 w-6" />
                   Documents Per Category
                 </CardTitle>
-                <CardDescription>Knowledge asset distribution.</CardDescription>
+                <CardDescription>File distribution by category.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
                   <Activity className="h-6 w-6" />
                   System Audit Ledger
                 </CardTitle>
-                <CardDescription>Immutable record of all system and user interactions.</CardDescription>
+                <CardDescription>Detailed history of user interactions.</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -297,14 +297,9 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-6">
                             <div className={cn(
                               "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                              log.actionType.includes('UPLOAD') || log.actionType.includes('CREATE') ? "bg-blue-50 text-blue-600" :
-                              log.actionType.includes('DOWNLOAD') ? "bg-emerald-50 text-emerald-600" :
-                              log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" :
-                              log.actionType.includes('DELETE') ? "bg-red-50 text-red-600" : "bg-purple-50 text-purple-600"
+                              userProfile?.role === 'Admin' ? "bg-primary text-white" : "bg-secondary text-primary"
                             )}>
-                              {log.actionType.includes('UPLOAD') || log.actionType.includes('CREATE') ? <FileText className="h-5 w-5" /> :
-                               log.actionType.includes('DOWNLOAD') ? <Download className="h-5 w-5" /> :
-                               log.actionType === 'LOGIN' ? <Users className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
+                              {userProfile?.role === 'Admin' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
                             </div>
                             <div>
                               <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
@@ -336,3 +331,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+import { ShieldCheck } from 'lucide-react';
