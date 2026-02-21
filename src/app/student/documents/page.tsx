@@ -12,7 +12,8 @@ import {
   Eye, 
   Sparkles,
   Loader2,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { 
   Select, 
@@ -68,13 +69,11 @@ export default function StudentDocuments() {
     setIsSummarizing(true);
     setSummary(null);
     try {
-      // Fetch the PDF file through the proxy to avoid CORS and get actual data
       const response = await fetch(`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}`);
       if (!response.ok) throw new Error('Failed to fetch document');
       
       const blob = await response.blob();
       
-      // Convert blob to Data URI for Genkit
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onloadend = () => resolve(reader.result as string);
@@ -98,21 +97,15 @@ export default function StudentDocuments() {
     }
   };
 
-  const handleDownload = (document: any) => {
+  const handleActionClick = (document: any) => {
     if (!firestore || !user) return;
     
-    // Log download activity
-    logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Downloaded: ${document.title}`, document.id);
+    logActivity(firestore, user.uid, 'DOCUMENT_DOWNLOAD', `Accessed: ${document.title}`, document.id);
     
-    // Update download count - This is the action that was causing the permission error
     updateDocumentNonBlocking(doc(firestore, 'documents', document.id), {
       downloadCount: (document.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
     });
-
-    // Use proxy for download
-    const proxyUrl = `/api/blob?url=${encodeURIComponent(document.fileUrl)}`;
-    window.open(proxyUrl, '_blank');
   };
 
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
@@ -216,17 +209,22 @@ export default function StudentDocuments() {
                       <Button 
                         variant="outline" 
                         className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
-                        onClick={() => setPreviewDoc(doc)}
+                        onClick={() => {
+                          setPreviewDoc(doc);
+                        }}
                       >
                         <Eye className="h-4 w-4" />
                         Preview
                       </Button>
                       <Button 
                         className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
-                        onClick={() => handleDownload(doc)}
+                        asChild
+                        onClick={() => handleActionClick(doc)}
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
+                        <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-2" />
+                          Open
+                        </a>
                       </Button>
                     </div>
                   </CardContent>
@@ -254,7 +252,6 @@ export default function StudentDocuments() {
         </div>
       </main>
 
-      {/* Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) { setPreviewDoc(null); setSummary(null); } }}>
         <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
           <DialogHeader className="p-6 bg-primary text-white">
@@ -272,19 +269,22 @@ export default function StudentDocuments() {
           </DialogHeader>
           
           <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
-            {/* Simulation of PDF Preview */}
             <div className="flex-1 bg-zinc-800 flex flex-col items-center justify-center text-white p-12 min-h-[400px]">
               <FileText className="h-24 w-24 opacity-20 mb-4" />
               <p className="text-center font-medium">Institutional PDF Viewer</p>
               <p className="text-sm text-zinc-400 max-w-xs text-center mt-2">Document is loaded securely from cloud storage.</p>
-              <Button className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" asChild>
+              <Button 
+                className="mt-8 bg-white text-primary hover:bg-zinc-100 rounded-full px-8" 
+                asChild
+                onClick={() => handleActionClick(previewDoc)}
+              >
                 <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
                   Open Document
                 </a>
               </Button>
             </div>
 
-            {/* AI Summary Panel */}
             <div className="w-full md:w-96 bg-background border-l p-6 overflow-y-auto">
               <div className="space-y-6">
                 <div className="flex items-center gap-2 text-primary font-bold">
@@ -321,9 +321,15 @@ export default function StudentDocuments() {
 
                 <div className="pt-6 border-t space-y-4">
                   <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Available Actions</p>
-                  <Button className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" onClick={() => handleDownload(previewDoc)}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download for Offline
+                  <Button 
+                    className="w-full bg-secondary text-primary font-bold h-12 rounded-xl shadow-sm" 
+                    asChild
+                    onClick={() => handleActionClick(previewDoc)}
+                  >
+                    <a href={`/api/blob?url=${encodeURIComponent(previewDoc?.fileUrl || '')}`} target="_blank" rel="noopener noreferrer">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Copy
+                    </a>
                   </Button>
                 </div>
               </div>

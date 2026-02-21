@@ -9,46 +9,30 @@ service cloud.firestore {
      * This ruleset enforces a strict role-based access model distinguishing between 'Students' and 'Admins'. 
      * Security is anchored in 'Existence over Content' for administrative privileges and 'Ownership' for 
      * student-generated data.
-     *
-     * Data Structure:
-     * Data is organized into top-level collections for global resources (Documents, FAQs, Announcements) 
-     * and user-specific entries (Users, Inquiries, ActivityLogs).
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
 
-    /** Checks if the requester is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the requester has a matching UID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** 
-     * Checks if the requester is an administrator. 
-     * Uses 'Existence over Content' via the /adminRoles collection.
-     */
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/adminRoles/$(request.auth.uid));
     }
 
     // --- COLLECTION RULES ---
 
-    /**
-     * @description Rules for user profile documents. Users manage their own profiles.
-     */
     match /users/{userId} {
       allow get, list: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Explicit collection to identify administrators.
-     */
     match /adminRoles/{adminId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
@@ -56,43 +40,28 @@ service cloud.firestore {
       allow delete: if isAdmin(); 
     }
 
-    /**
-     * @description Official PDF Documents.
-     * Students can read all documents and update metadata (e.g., downloadCount).
-     */
     match /documents/{documentId} {
       allow get, list: if isSignedIn();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || isSignedIn();
+      // Students need to update the downloadCount metadata
+      allow update: if isSignedIn();
     }
 
-    /**
-     * @description Metadata categories for organization.
-     */
     match /categories/{categoryId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Academic programs.
-     */
     match /programs/{programId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Official announcements for students.
-     */
     match /announcements/{announcementId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Student inquiries.
-     */
     match /inquiries/{inquiryId} {
       allow get, list: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
@@ -100,26 +69,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    /**
-     * @description Frequently Asked Questions.
-     */
     match /faqs/{faqId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Audit logs for security monitoring. 
-     */
     match /activityLogs/{activityLogId} {
       allow get, list: if isAdmin();
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
 
-    /**
-     * @description Configuration for when inquiries are accepted.
-     */
     match /inquiryPeriods/{inquiryPeriodId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
