@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -26,7 +25,8 @@ import {
   Activity, 
   FileDown,
   MousePointer2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -117,7 +117,7 @@ export default function AdminDashboard() {
       ['System Audit Ledger']
     ];
 
-    const headers = ['Action Description', 'User Name', 'Institutional Details', 'Timestamp'];
+    const headers = ['Action Description', 'User Name', 'Action Type', 'Timestamp'];
     const rows = logs.map(log => {
       const userName = users?.find(u => u.id === log.userId)?.fullName || 'System User';
       return [
@@ -203,9 +203,9 @@ export default function AdminDashboard() {
                 <div>
                   <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                     <TrendingUp className="h-6 w-6" />
-                    Usage Trends
+                    Engagement Velocity
                   </CardTitle>
-                  <CardDescription>Logins and document interactions over time.</CardDescription>
+                  <CardDescription>Daily logins and document downloads over time.</CardDescription>
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
                   <MousePointer2 className="h-6 w-6" />
                   Documents Per Category
                 </CardTitle>
-                <CardDescription>File distribution by category.</CardDescription>
+                <CardDescription>File distribution by institutional classification.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -331,5 +331,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-import { ShieldCheck } from 'lucide-react';
