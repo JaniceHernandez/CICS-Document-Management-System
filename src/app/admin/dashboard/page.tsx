@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -42,7 +43,14 @@ const COLORS = ['#003366', '#FFD700', '#004080', '#FFC107', '#002244'];
 export default function AdminDashboard() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [timeRange, setTimeRange] = useState('weekly');
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login?role=admin');
+    }
+  }, [user, isUserLoading, router]);
 
   const activityLogsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -115,7 +123,7 @@ export default function AdminDashboard() {
       ['Active Inquiries', activeInquiries],
       ['Report Generated On', new Date().toLocaleString()],
       [''],
-      ['System Audit Ledger']
+      ['Activity History']
     ];
 
     const headers = ['Action Description', 'User Name', 'Action Type', 'Timestamp'];
@@ -139,14 +147,14 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `system_audit_ledger_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute('download', `institutional_report_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || (!user && !isUserLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -170,7 +178,7 @@ export default function AdminDashboard() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
-              <p className="text-muted-foreground mt-1 text-lg">General activity and usage monitoring for the college.</p>
+              <p className="text-muted-foreground mt-1 text-lg">General activity and engagement monitoring.</p>
             </div>
             <Button 
               variant="outline"
@@ -178,7 +186,7 @@ export default function AdminDashboard() {
               className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
             >
               <FileDown className="h-5 w-5 mr-2" />
-              Export Ledger CSV
+              Export Report
             </Button>
           </header>
 
@@ -204,7 +212,7 @@ export default function AdminDashboard() {
                 <div>
                   <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                     <TrendingUp className="h-6 w-6" />
-                    Engagement Velocity
+                    Activity Trends
                   </CardTitle>
                   <CardDescription>Daily logins and document downloads over time.</CardDescription>
                 </div>
@@ -243,9 +251,9 @@ export default function AdminDashboard() {
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <MousePointer2 className="h-6 w-6" />
-                  Documents Per Category
+                  Files By Classification
                 </CardTitle>
-                <CardDescription>File distribution by institutional classification.</CardDescription>
+                <CardDescription>Document distribution by category.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -278,9 +286,9 @@ export default function AdminDashboard() {
               <div>
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <Activity className="h-6 w-6" />
-                  System Audit Ledger
+                  Activity History
                 </CardTitle>
-                <CardDescription>Detailed history of user interactions.</CardDescription>
+                <CardDescription>Audit ledger of user and system interactions.</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-0">

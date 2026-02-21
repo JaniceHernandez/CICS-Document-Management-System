@@ -1,18 +1,36 @@
+
 "use client";
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bell, Calendar, Tag, ChevronRight, Loader2 } from 'lucide-react';
+import { Bell, Calendar, Loader2, Ghost } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 
 export default function StudentAnnouncements() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const announcementsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'announcements') : null, [firestore, user]);
   const { data: announcements, isLoading } = useCollection(announcementsQuery);
+
+  if (isUserLoading || (!user && !isUserLoading)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -22,23 +40,26 @@ export default function StudentAnnouncements() {
         <div className="max-w-4xl mx-auto space-y-8">
           <header>
             <h1 className="text-3xl font-headline font-bold text-primary">CICS Announcements</h1>
-            <p className="text-muted-foreground">Stay updated with official college news and broadcasts.</p>
+            <p className="text-muted-foreground">Stay updated with official institutional news and broadcasts.</p>
           </header>
 
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-10 w-10 text-primary animate-spin" />
             </div>
-          ) : announcements?.length === 0 ? (
-            <Card className="border-none shadow-sm rounded-3xl p-12 text-center bg-white">
-              <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Bell className="h-10 w-10 text-zinc-300" />
+          ) : !announcements || announcements.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-40 text-center">
+              <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
+                <Ghost className="h-10 w-10 text-zinc-300" />
               </div>
-              <p className="text-muted-foreground">No current announcements to display.</p>
-            </Card>
+              <h3 className="text-xl font-bold text-zinc-900">No active broadcasts</h3>
+              <p className="text-muted-foreground max-w-sm mt-2">
+                There are currently no new announcements or broadcasts for your program. Check back later for updates.
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {announcements?.sort((a,b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map((ann) => (
+              {announcements.sort((a,b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map((ann) => (
                 <Card key={ann.id} className="border-none shadow-md rounded-2xl overflow-hidden bg-white hover:shadow-xl transition-all border-l-4 border-l-secondary">
                   <CardHeader className="p-6 pb-2">
                     <div className="flex items-center justify-between mb-2">

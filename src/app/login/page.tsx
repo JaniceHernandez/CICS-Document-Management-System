@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
@@ -29,8 +29,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     async function handleAuthFlow() {
-      if (user && firestore) {
-        setIsAuthenticating(true);
+      if (user && firestore && isAuthenticating) {
         try {
           const userDocRef = doc(firestore, 'users', user.uid);
           const userSnap = await getDoc(userDocRef);
@@ -51,6 +50,7 @@ export default function LoginPage() {
             const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
             const adminSnap = await getDoc(adminRoleRef);
 
+            // Special handling for master admin
             if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
                await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
             }
@@ -137,7 +137,7 @@ export default function LoginPage() {
     if (user && !isUserLoading) {
       handleAuthFlow();
     }
-  }, [user, isUserLoading, firestore, targetRole, router, auth, toast]);
+  }, [user, isUserLoading, firestore, targetRole, router, auth, toast, isAuthenticating]);
 
   const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
@@ -191,7 +191,7 @@ export default function LoginPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-muted-foreground font-medium">Verifying identity...</p>
+          <p className="text-muted-foreground font-medium">Verifying institutional identity...</p>
         </div>
       </div>
     );
@@ -210,7 +210,7 @@ export default function LoginPage() {
             <ShieldCheck className="h-12 w-12 text-white" />
           </div>
           <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">CICS Hub</h1>
-          <p className="text-muted-foreground mt-2 font-body text-lg">Institutional Access</p>
+          <p className="text-muted-foreground mt-2 font-body text-lg">Institutional Access Portal</p>
         </div>
 
         <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
@@ -220,7 +220,7 @@ export default function LoginPage() {
             </CardTitle>
             <CardDescription className="text-base">
               {targetRole === 'admin' 
-                ? 'Authorized personnel only.' 
+                ? 'Authorized personnel login only.' 
                 : 'Sign in with your @neu.edu.ph account.'}
             </CardDescription>
           </CardHeader>
@@ -229,7 +229,7 @@ export default function LoginPage() {
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Institutional Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -245,7 +245,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Security Key</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -283,8 +283,9 @@ export default function LoginPage() {
             <Link 
               href={`/login?role=${targetRole === 'admin' ? 'student' : 'admin'}`}
               className="text-sm font-bold text-primary hover:underline"
+              onClick={() => setIsAuthenticating(false)}
             >
-              {targetRole === 'admin' ? 'Switch to Student' : 'Switch to Admin'}
+              {targetRole === 'admin' ? 'Switch to Student Access' : 'Switch to Admin Access'}
             </Link>
           </CardFooter>
         </Card>

@@ -16,7 +16,8 @@ import {
   X,
   ShieldCheck,
   Info,
-  ArrowUpDown
+  ArrowUpDown,
+  Ghost
 } from 'lucide-react';
 import { 
   Select, 
@@ -64,17 +65,16 @@ export default function StudentDocuments() {
           return;
         } 
         
-        // Only set the default program once on initial load to avoid forcing the filter
-        // when the user manually tries to change it to "all".
+        // Only set the default program once on initial load
         if (!hasDefaultedProgram && userData.programIds.length > 0) {
           setSelectedProgram(userData.programIds[0]);
           setHasDefaultedProgram(true);
         }
+      } else if (!isUserLoading && !user) {
+        router.push('/login');
       }
     }
-    if (!isUserLoading) {
-      checkOnboarding();
-    }
+    checkOnboarding();
   }, [user, isUserLoading, firestore, router, hasDefaultedProgram]);
 
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
@@ -108,7 +108,6 @@ export default function StudentDocuments() {
   const handleDownload = (documentData: any) => {
     if (!firestore || !user || !documentData) return;
 
-    // Log the download activity
     logActivity(
       firestore, 
       user.uid, 
@@ -117,13 +116,11 @@ export default function StudentDocuments() {
       documentData.id
     );
 
-    // Update download count in Firestore
     updateDocumentNonBlocking(doc(firestore, 'documents', documentData.id), {
       downloadCount: (documentData.downloadCount || 0) + 1,
       updatedAt: new Date().toISOString()
     });
 
-    // Trigger the actual download via the proxy
     const downloadUrl = `/api/blob?url=${encodeURIComponent(documentData.fileUrl)}&download=true`;
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -140,7 +137,7 @@ export default function StudentDocuments() {
 
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
 
-  if (isUserLoading) {
+  if (isUserLoading || (!user && !isUserLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -157,7 +154,7 @@ export default function StudentDocuments() {
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-headline font-bold text-primary">Library</h1>
-              <p className="text-muted-foreground">Search and access official school resources.</p>
+              <p className="text-muted-foreground">Search and access official institutional resources.</p>
             </div>
             <div className="flex gap-4 items-center">
               {userProfile?.programIds?.length > 0 && (
@@ -223,13 +220,13 @@ export default function StudentDocuments() {
           </Card>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
+            <div className="flex flex-col items-center justify-center py-32">
               <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-              <p className="text-muted-foreground">Loading documents...</p>
+              <p className="text-muted-foreground font-medium">Loading library collections...</p>
             </div>
-          ) : (
+          ) : sortedDocs && sortedDocs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {sortedDocs?.map((docData) => (
+              {sortedDocs.map((docData) => (
                 <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
                   <CardHeader className="p-6 pb-2">
                     <div className="flex justify-between items-start mb-2">
@@ -273,6 +270,27 @@ export default function StudentDocuments() {
                 </Card>
               ))}
             </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-40 text-center">
+              <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
+                <Ghost className="h-10 w-10 text-zinc-300" />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900">No resources found</h3>
+              <p className="text-muted-foreground max-w-sm mt-2">
+                We couldn't find any documents matching your current filters. Try adjusting your search or category selection.
+              </p>
+              <Button 
+                variant="link" 
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                  setSelectedProgram('all');
+                }}
+                className="mt-4 text-primary font-bold"
+              >
+                Clear all filters
+              </Button>
+            </div>
           )}
         </div>
       </main>
@@ -294,7 +312,6 @@ export default function StudentDocuments() {
           </DialogHeader>
           
           <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-zinc-50">
-            {/* Embedded PDF Viewer */}
             <div className="flex-1 bg-zinc-800 relative overflow-hidden">
               {previewDoc && (
                 <iframe 
@@ -305,13 +322,12 @@ export default function StudentDocuments() {
               )}
             </div>
 
-            {/* Document Details Sidebar */}
             <div className="w-full md:w-80 bg-background border-l p-8 overflow-y-auto">
               <div className="space-y-8">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-primary font-bold">
                     <Info className="h-5 w-5" />
-                    Details
+                    Description
                   </div>
                   <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 shadow-inner">
                     <p className="text-sm text-zinc-600 leading-relaxed italic">
