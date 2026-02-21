@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { put } from '@vercel/blob';
+import { uploadToBlob } from '@/app/actions/storage';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { Loader2, Upload, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -122,12 +123,13 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
       let fileName = editDoc?.fileName || 'unknown';
       let fileSize = editDoc?.fileSize || 0;
 
-      // Upload to Vercel Blob if new file provided
+      // Upload to Vercel Blob if new file provided via Server Action
       if (file) {
-        const blob = await put(`cics-docs/${docId}-${file.name}`, file, {
-          access: 'public',
-        });
-        fileUrl = blob.url;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', `cics-docs/${docId}-${file.name}`);
+        
+        fileUrl = await uploadToBlob(formData);
         fileName = file.name;
         fileSize = file.size;
       }
@@ -183,12 +185,11 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             </DialogTitle>
           </div>
           <DialogDescription className="text-white/70 text-base">
-            Configure institutional metadata and cloud synchronization for PDF assets.
+            Configure institutional metadata and Vercel Blob synchronization for PDF assets.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-zinc-50/50">
-          {/* File Upload Area */}
           <div className="space-y-3">
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Source Material</Label>
             <div 
