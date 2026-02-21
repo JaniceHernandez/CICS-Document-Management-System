@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,6 +20,7 @@ import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/no
 import { logActivity } from '@/lib/activity-logging';
 import { Loader2, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface AnnouncementDialogProps {
   open: boolean;

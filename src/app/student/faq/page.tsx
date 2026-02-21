@@ -24,6 +24,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { askChatbot } from '@/ai/flows/faq-chatbot';
+import { cn } from '@/lib/utils';
 
 const FAQS = [
   { 
@@ -219,5 +220,3 @@ export default function StudentSupport() {
     </div>
   );
 }
-
-import { cn } from '@/lib/utils';
