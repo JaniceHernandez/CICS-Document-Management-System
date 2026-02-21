@@ -34,7 +34,7 @@ export default function AdminSettings() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    logActivity(firestore, adminUser.uid, 'CATEGORY_CREATE', `Added new document category: ${newCat}`);
+    logActivity(firestore, adminUser.uid, 'CATEGORY_CREATE', `Added category: ${newCat}`);
     setNewCat('');
   };
 
@@ -46,7 +46,7 @@ export default function AdminSettings() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    logActivity(firestore, adminUser.uid, 'PROGRAM_CREATE', `Registered new academic program: ${newProgCode}`);
+    logActivity(firestore, adminUser.uid, 'PROGRAM_CREATE', `Added program: ${newProgCode}`);
     setNewProgName('');
     setNewProgCode('');
   };
@@ -58,8 +58,8 @@ export default function AdminSettings() {
       <main className="flex-1 ml-64 p-8">
         <div className="max-w-5xl mx-auto space-y-8">
           <header>
-            <h1 className="text-3xl font-headline font-bold text-primary">System Settings</h1>
-            <p className="text-muted-foreground">Configure institutional metadata and portal behavior.</p>
+            <h1 className="text-3xl font-headline font-bold text-primary">Settings</h1>
+            <p className="text-muted-foreground">Manage categories and academic programs.</p>
           </header>
 
           <div className="grid grid-cols-1 gap-8">
@@ -71,7 +71,7 @@ export default function AdminSettings() {
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold">Document Categories</CardTitle>
-                    <CardDescription>Define how documents are classified in the library.</CardDescription>
+                    <CardDescription>File types for sorting documents.</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -85,10 +85,10 @@ export default function AdminSettings() {
                 </div>
                 <div className="flex gap-4 items-end bg-zinc-50 p-6 rounded-2xl border border-dashed border-zinc-200">
                   <div className="flex-1 space-y-2">
-                    <Label htmlFor="cat-name">Category Name</Label>
+                    <Label htmlFor="cat-name">New Category Name</Label>
                     <Input 
                       id="cat-name" 
-                      placeholder="e.g. Syllabi, Laboratory Manuals" 
+                      placeholder="e.g. Syllabi" 
                       value={newCat}
                       onChange={(e) => setNewCat(e.target.value)}
                       className="rounded-xl h-11"
@@ -109,7 +109,7 @@ export default function AdminSettings() {
                   </div>
                   <div>
                     <CardTitle className="text-xl font-bold">Academic Programs</CardTitle>
-                    <CardDescription>Manage CICS programs for filtering and permissions.</CardDescription>
+                    <CardDescription>Manage school programs for filtering.</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -126,8 +126,8 @@ export default function AdminSettings() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-50 p-6 rounded-2xl border border-dashed border-zinc-200">
                   <div className="space-y-2">
-                    <Label>Program Full Name</Label>
-                    <Input placeholder="e.g. BS in Information Tech" value={newProgName} onChange={(e) => setNewProgName(e.target.value)} className="rounded-xl" />
+                    <Label>Full Name</Label>
+                    <Input placeholder="e.g. BS in IT" value={newProgName} onChange={(e) => setNewProgName(e.target.value)} className="rounded-xl" />
                   </div>
                   <div className="space-y-2">
                     <Label>Short Code</Label>
@@ -137,38 +137,6 @@ export default function AdminSettings() {
                     <Button onClick={addProgram} disabled={!newProgName || !newProgCode} className="w-full h-11 bg-primary text-white rounded-xl">
                       Add Program
                     </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm rounded-2xl bg-white">
-              <CardHeader className="border-b">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold">Inquiry Periods</CardTitle>
-                    <CardDescription>Control when students can submit support requests.</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {periods?.map((period) => (
-                    <div key={period.id} className="flex items-center justify-between p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
-                      <div>
-                        <p className="font-bold">{period.name}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(period.startDate).toLocaleDateString()} - {new Date(period.endDate).toLocaleDateString()}</p>
-                      </div>
-                      <Badge className={period.isEnabled ? "bg-green-100 text-green-700" : "bg-zinc-200 text-zinc-700"}>
-                        {period.isEnabled ? 'ACTIVE' : 'DISABLED'}
-                      </Badge>
-                    </div>
-                  ))}
-                  <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-3xl">
-                    Custom inquiry periods are managed via special academic sessions.
                   </div>
                 </div>
               </CardContent>

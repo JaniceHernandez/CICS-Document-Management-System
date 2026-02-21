@@ -80,7 +80,7 @@ export default function AdminInquiries() {
   };
 
   const handleDelete = (id: string) => {
-    if (!firestore || !confirm('Delete this inquiry permanently?')) return;
+    if (!firestore || !confirm('Delete this inquiry?')) return;
     deleteDocumentNonBlocking(doc(firestore, 'inquiries', id));
   };
 
@@ -94,8 +94,8 @@ export default function AdminInquiries() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">Student Inquiries</h1>
-              <p className="text-muted-foreground">Manage and resolve academic support requests.</p>
+              <h1 className="text-3xl font-headline font-bold text-primary">Inquiries</h1>
+              <p className="text-muted-foreground">Reply to student questions and requests.</p>
             </div>
             <div className="relative w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -111,7 +111,7 @@ export default function AdminInquiries() {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="h-10 w-10 text-primary animate-spin" />
-              <p className="mt-4 text-muted-foreground">Loading inquiries...</p>
+              <p className="mt-4 text-muted-foreground">Loading questions...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
@@ -155,7 +155,7 @@ export default function AdminInquiries() {
                         onClick={() => { setSelectedInquiry(iq); setResponse(iq.adminResponse || ''); setAiSummary(''); }}
                       >
                         <Reply className="h-4 w-4 mr-2" />
-                        {iq.status === 'Resolved' ? 'View Details' : 'Respond'}
+                        {iq.status === 'Resolved' ? 'View Details' : 'Reply'}
                       </Button>
                       <Button 
                         variant="ghost" 
@@ -169,17 +169,10 @@ export default function AdminInquiries() {
                   </div>
                 </Card>
               ))}
-              {filteredInquiries?.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-zinc-100">
-                  <MessageSquare className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
-                  <p className="text-muted-foreground font-medium">No inquiries found.</p>
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Response Dialog */}
         <Dialog open={!!selectedInquiry} onOpenChange={(open) => !open && setSelectedInquiry(null)}>
           <DialogContent className="max-w-3xl rounded-3xl border-none p-0 overflow-hidden">
             <DialogHeader className="p-8 bg-primary text-white">
@@ -205,7 +198,7 @@ export default function AdminInquiries() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">AI Analysis</h4>
+                  <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">AI Summary</h4>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -214,13 +207,13 @@ export default function AdminInquiries() {
                     disabled={isSummarizing}
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    {aiSummary ? 'Regenerate' : 'Summarize Inquiry'}
+                    {aiSummary ? 'Regenerate' : 'Summarize'}
                   </Button>
                 </div>
                 {isSummarizing ? (
                   <div className="p-6 bg-primary/5 rounded-2xl flex items-center gap-3">
                     <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                    <span className="text-sm text-primary font-medium">AI is reading the inquiry...</span>
+                    <span className="text-sm text-primary font-medium">Summarizing...</span>
                   </div>
                 ) : aiSummary ? (
                   <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl text-sm text-primary leading-relaxed">
@@ -230,9 +223,9 @@ export default function AdminInquiries() {
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Admin Response</h4>
+                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Your Reply</h4>
                 <Textarea 
-                  placeholder="Provide your professional response here..." 
+                  placeholder="Type your response here..." 
                   className="min-h-[150px] rounded-2xl border-zinc-200 focus:ring-primary"
                   value={response}
                   onChange={(e) => setResponse(e.target.value)}
@@ -247,7 +240,7 @@ export default function AdminInquiries() {
               </Button>
               {selectedInquiry?.status !== 'Resolved' && (
                 <Button onClick={handleRespond} disabled={!response.trim()} className="bg-primary text-white rounded-xl h-11 px-8 font-bold">
-                  Send Response & Resolve
+                  Send Reply
                 </Button>
               )}
             </DialogFooter>

@@ -42,7 +42,6 @@ export default function AdminDashboard() {
   const { user, isUserLoading } = useUser();
   const [timeRange, setTimeRange] = useState('weekly');
 
-  // Firestore Queries
   const activityLogsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'activityLogs'), orderBy('timestamp', 'desc'), limit(500));
@@ -74,26 +73,19 @@ export default function AdminDashboard() {
   const { data: allInquiries } = useCollection(inquiriesQuery);
   const { data: allCategories } = useCollection(categoriesQuery);
 
-  // Engagement Metrics
   const studentCount = users?.filter(u => u.role === 'Student').length || 0;
   const docCount = allDocs?.length || 0;
   const totalDownloads = allDocs?.reduce((acc, d) => acc + (d.downloadCount || 0), 0) || 0;
   const activeInquiries = allInquiries?.filter(i => i.status !== 'Resolved').length || 0;
 
-  // Trend Data Generation based on TimeRange
   const getTrendData = () => {
-    // We use startOfDay to ensure consistent date comparisons across different times of the day
     const today = startOfDay(new Date());
     let days = timeRange === 'weekly' ? 7 : timeRange === 'monthly' ? 30 : 90;
     
-    // Generate the interval of days to display
     const interval = Array.from({ length: days }, (_, i) => subDays(today, i)).reverse();
     
     return interval.map(date => {
-      // Filter logs that happened on this specific day
-      // Ensure we parse the log timestamp correctly
       const dayLogs = logs?.filter(log => isSameDay(new Date(log.timestamp), date)) || [];
-      
       return {
         date: format(date, days > 30 ? 'MMM dd' : 'MMM dd'),
         logins: dayLogs.filter(l => l.actionType === 'LOGIN').length,
@@ -104,31 +96,28 @@ export default function AdminDashboard() {
 
   const trendData = getTrendData();
 
-  // Documents Per Category (Column Chart)
   const categoryStats = allCategories?.map(cat => ({
     name: cat.name,
     count: allDocs?.filter(d => d.categoryId === cat.id).length || 0
   })).sort((a, b) => b.count - a.count) || [];
 
-  // Export Logic
   const exportToCSV = () => {
     if (!logs) return;
     
-    // Summary Section
     const summary = [
-      ['System Overview Summary'],
+      ['Dashboard Summary Report'],
       ['Registered Students', studentCount],
       ['Documents Hosted', docCount],
       ['Total Downloads', totalDownloads],
       ['Active Inquiries', activeInquiries],
       ['Generated On', new Date().toLocaleString()],
       [''],
-      ['Detailed Activity Ledger']
+      ['Activity History']
     ];
 
-    const headers = ['Action', 'User', 'Details', 'Timestamp'];
+    const headers = ['Action', 'Name', 'Description', 'Time'];
     const rows = logs.map(log => {
-      const userName = users?.find(u => u.id === log.userId)?.fullName || log.userId;
+      const userName = users?.find(u => u.id === log.userId)?.fullName || 'System';
       return [
         log.actionType,
         userName,
@@ -147,7 +136,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `cics_system_overview_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute('download', `dashboard_report_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -177,8 +166,8 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Real-time institutional engagement and system metrics.</p>
+              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Admin Dashboard</h1>
+              <p className="text-muted-foreground mt-1 text-lg">Quick overview of school activity and files.</p>
             </div>
             <Button 
               variant="outline"
@@ -186,7 +175,7 @@ export default function AdminDashboard() {
               className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
             >
               <FileDown className="h-5 w-5 mr-2" />
-              Export Ledger (CSV)
+              Download CSV Report
             </Button>
           </header>
 
@@ -212,9 +201,9 @@ export default function AdminDashboard() {
                 <div>
                   <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                     <TrendingUp className="h-6 w-6" />
-                    Engagement Velocity
+                    Usage Trends
                   </CardTitle>
-                  <CardDescription>Visualizing login and download patterns</CardDescription>
+                  <CardDescription>Track logins and downloads over time</CardDescription>
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
@@ -251,9 +240,9 @@ export default function AdminDashboard() {
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <MousePointer2 className="h-6 w-6" />
-                  Documents Per Category
+                  Documents by Type
                 </CardTitle>
-                <CardDescription>Knowledge asset distribution</CardDescription>
+                <CardDescription>File distribution by category</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -286,9 +275,9 @@ export default function AdminDashboard() {
               <div>
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <Activity className="h-6 w-6" />
-                  System Audit Ledger
+                  Activity History
                 </CardTitle>
-                <CardDescription>Comprehensive log of institutional activities</CardDescription>
+                <CardDescription>Recent actions from students and staff</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -317,7 +306,7 @@ export default function AdminDashboard() {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                                {userProfile?.fullName || 'Unknown User'}
+                                {userProfile?.fullName || 'System User'}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1 font-medium">
                                 {log.details}

@@ -74,8 +74,8 @@ export default function AdminAnnouncements() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Broadcasts</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage official announcements and targeted news.</p>
+              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Announcements</h1>
+              <p className="text-muted-foreground mt-1 text-lg">Manage school announcements and news.</p>
             </div>
             <Button 
               onClick={() => { setEditingAnn(null); setIsDialogOpen(true); }}
@@ -90,23 +90,23 @@ export default function AdminAnnouncements() {
             <CardHeader className="p-8 border-b border-zinc-50">
               <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
                 <Bell className="h-6 w-6 text-primary" />
-                Broadcast Ledger
+                All Announcements
               </CardTitle>
-              <CardDescription>Managing {announcements?.length || 0} active broadcasts</CardDescription>
+              <CardDescription>Managing {announcements?.length || 0} active posts</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="p-32 flex flex-col items-center">
                   <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                  <p className="mt-4 text-muted-foreground font-medium">Fetching broadcasts...</p>
+                  <p className="mt-4 text-muted-foreground font-medium">Fetching posts...</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader className="bg-zinc-50/50">
                     <TableRow className="border-none">
-                      <TableHead className="font-bold px-8">Announcement</TableHead>
-                      <TableHead className="font-bold">Target Audience</TableHead>
-                      <TableHead className="font-bold">Publish Date</TableHead>
+                      <TableHead className="font-bold px-8">Post Title</TableHead>
+                      <TableHead className="font-bold">Audience</TableHead>
+                      <TableHead className="font-bold">Date</TableHead>
                       <TableHead className="font-bold text-right px-8">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -149,7 +149,7 @@ export default function AdminAnnouncements() {
                                 className="rounded-xl cursor-pointer"
                                 onClick={() => { setEditingAnn(ann); setIsDialogOpen(true); }}
                               >
-                                <Edit className="h-4 w-4 mr-3" /> Edit Message
+                                <Edit className="h-4 w-4 mr-3" /> Edit Post
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 

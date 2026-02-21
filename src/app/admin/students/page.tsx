@@ -65,7 +65,7 @@ export default function StudentManagement() {
       firestore, 
       adminUser.uid, 
       action, 
-      `${newStatus === 'blocked' ? 'Blocked' : 'Unblocked'} student access for: ${student.fullName}`, 
+      `${newStatus === 'blocked' ? 'Blocked' : 'Unblocked'} account: ${student.fullName}`, 
       undefined, 
       student.id
     );
@@ -79,16 +79,13 @@ export default function StudentManagement() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">Student Management</h1>
-              <p className="text-muted-foreground">Monitor and manage access for CICS students.</p>
+              <h1 className="text-3xl font-headline font-bold text-primary">Students</h1>
+              <p className="text-muted-foreground">Manage student accounts and access.</p>
             </div>
             <div className="flex gap-4">
               <Button variant="outline" className="rounded-full">
                 <Filter className="h-4 w-4 mr-2" />
-                Filter Domain
-              </Button>
-              <Button className="bg-primary text-white rounded-full">
-                Invite Students
+                Filter List
               </Button>
             </div>
           </header>
@@ -137,7 +134,7 @@ export default function StudentManagement() {
                   <Mail className="h-6 w-6 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-zinc-400">Institutional</p>
+                  <p className="text-sm font-medium text-zinc-400">School Mail</p>
                   <p className="text-2xl font-bold text-white">100%</p>
                 </div>
               </div>
@@ -147,13 +144,13 @@ export default function StudentManagement() {
           <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
             <CardHeader className="bg-white border-b p-6 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="font-headline font-bold text-xl">Student Directory</CardTitle>
-                <CardDescription>Managing institutional portal access</CardDescription>
+                <CardTitle className="font-headline font-bold text-xl">Student List</CardTitle>
+                <CardDescription>All students with portal access</CardDescription>
               </div>
               <div className="relative w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search by name or email..." 
+                  placeholder="Search students..." 
                   className="pl-9 h-11 rounded-xl"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -164,14 +161,14 @@ export default function StudentManagement() {
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
-                  <p className="text-muted-foreground">Fetching student records...</p>
+                  <p className="text-muted-foreground">Loading students...</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader className="bg-zinc-50">
                     <TableRow>
                       <TableHead className="font-bold">Student Name</TableHead>
-                      <TableHead className="font-bold">Email Address</TableHead>
+                      <TableHead className="font-bold">Email</TableHead>
                       <TableHead className="font-bold">Status</TableHead>
                       <TableHead className="font-bold">Last Login</TableHead>
                       <TableHead className="font-bold text-right">Actions</TableHead>
@@ -237,13 +234,6 @@ export default function StudentManagement() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-20 text-muted-foreground">
-                          No students found matching your search.
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               )}

@@ -1,11 +1,9 @@
-
 "use client";
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
-  LayoutDashboard, 
   FileText, 
   Users, 
   Settings, 
@@ -25,7 +23,7 @@ interface SidebarNavProps {
 }
 
 const adminLinks = [
-  { href: '/admin/dashboard', label: 'Analytics', icon: BarChart3 },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
   { href: '/admin/documents', label: 'Documents', icon: FileText },
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/students', label: 'Students', icon: Users },
@@ -91,9 +89,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
 
       <div className="mt-auto p-6 space-y-4">
         <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Authenticated</p>
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Signed In</p>
           <p className="text-sm font-bold truncate">
-            {role === 'admin' ? 'Administrator' : user?.email?.split('@')[0] || 'CICS Student'}
+            {role === 'admin' ? 'Administrator' : user?.email?.split('@')[0] || 'Student'}
           </p>
         </div>
         
