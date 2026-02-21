@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   Plus, 
-  Upload, 
   Search, 
   MoreVertical, 
   FileText, 
@@ -67,14 +66,10 @@ export default function DocumentManagement() {
     if (!firestore || !user) return;
     if (confirm(`Delete "${document.title}" permanently?`)) {
       try {
-        // Remove from Firestore
         deleteDocumentNonBlocking(doc(firestore, 'documents', document.id));
-        
-        // Remove from Vercel Blob
         if (document.fileUrl) {
           await deleteFromBlob(document.fileUrl);
         }
-
         logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted document and file: ${document.title}`, document.id);
         toast({
           title: "Document Deleted",
@@ -96,7 +91,7 @@ export default function DocumentManagement() {
 
   const totalSize = documents?.reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
   const sizeInMB = (totalSize / (1024 * 1024)).toFixed(1);
-  const storagePercent = Math.min(100, (parseFloat(sizeInMB) / 500) * 100); // Assuming 500MB quota for visual context
+  const storagePercent = Math.min(100, (parseFloat(sizeInMB) / 500) * 100);
 
   return (
     <div className="flex min-h-screen bg-zinc-50/30">
@@ -230,30 +225,6 @@ export default function DocumentManagement() {
             </Card>
 
             <div className="space-y-8">
-              <Card className="border-none shadow-sm rounded-3xl bg-primary text-white overflow-hidden relative group">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                  <Upload className="h-24 w-24" />
-                </div>
-                <CardHeader className="p-8">
-                  <CardTitle className="font-headline font-bold text-2xl">Quick Add</CardTitle>
-                  <CardDescription className="text-white/60">Institutional file host.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-8 pt-0">
-                  <div 
-                    className="border-2 border-dashed border-white/20 rounded-3xl p-10 flex flex-col items-center justify-center text-center space-y-4 hover:border-secondary hover:bg-white/5 transition-all cursor-pointer"
-                    onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
-                  >
-                    <div className="w-16 h-16 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-xl shadow-secondary/20">
-                      <Upload className="h-8 w-8" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-lg">Upload PDF</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Drag & Drop Supported</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card className="border-none shadow-sm rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-zinc-50">
                   <CardTitle className="font-headline font-bold text-xl">Cloud Usage</CardTitle>
@@ -272,7 +243,7 @@ export default function DocumentManagement() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-zinc-50 rounded-2xl">
                       <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Total Assets</p>
                       <p className="text-2xl font-bold text-primary">{documents?.length || 0}</p>

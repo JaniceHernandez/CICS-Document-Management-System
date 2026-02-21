@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -9,10 +10,10 @@ import {
   MoreVertical, 
   UserX, 
   UserCheck, 
-  Mail,
   GraduationCap,
   Filter,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,6 +31,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -41,15 +49,22 @@ export default function StudentManagement() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProgram, setSelectedProgram] = useState('all');
 
   const usersQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'users') : null, [firestore, adminUser]);
+  const programsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'programs') : null, [firestore, adminUser]);
+  
   const { data: users, isLoading } = useCollection(usersQuery);
+  const { data: programs } = useCollection(programsQuery);
 
   const students = users?.filter(u => u.role === 'Student') || [];
-  const filteredStudents = students.filter(s => 
-    s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          s.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesProgram = selectedProgram === 'all' || s.programIds?.includes(selectedProgram);
+    return matchesSearch && matchesProgram;
+  });
 
   const toggleUserStatus = (student: any) => {
     if (!firestore || !adminUser) return;
@@ -71,6 +86,11 @@ export default function StudentManagement() {
     );
   };
 
+  const getProgramCode = (programIds: string[]) => {
+    if (!programIds || programIds.length === 0) return 'Not Set';
+    return programs?.find(p => p.id === programIds[0])?.shortCode || 'N/A';
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav role="admin" />
@@ -82,22 +102,29 @@ export default function StudentManagement() {
               <h1 className="text-3xl font-headline font-bold text-primary">Students</h1>
               <p className="text-muted-foreground">Manage student accounts and access.</p>
             </div>
-            <div className="flex gap-4">
-              <Button variant="outline" className="rounded-full">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter List
-              </Button>
+            <div className="flex gap-4 items-center">
+              <Select value={selectedProgram} onValueChange={setSelectedProgram}>
+                <SelectTrigger className="w-48 h-11 rounded-xl bg-white border-zinc-200">
+                  <SelectValue placeholder="All Programs" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="all">All Programs</SelectItem>
+                  {programs?.map((prog) => (
+                    <SelectItem key={prog.id} value={prog.id}>{prog.shortCode}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-blue-50 rounded-xl">
-                  <GraduationCap className="h-6 w-6 text-blue-600" />
+                  <Users className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Students</p>
+                  <p className="text-sm font-medium text-muted-foreground">Registered Students</p>
                   <p className="text-2xl font-bold text-primary">{students.length}</p>
                 </div>
               </div>
@@ -125,17 +152,6 @@ export default function StudentManagement() {
                   <p className="text-2xl font-bold text-primary">
                     {students.filter(s => s.status === 'blocked').length}
                   </p>
-                </div>
-              </div>
-            </Card>
-            <Card className="border-none shadow-sm rounded-2xl bg-zinc-900 text-white p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-zinc-800 rounded-xl">
-                  <Mail className="h-6 w-6 text-secondary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-400">School Mail</p>
-                  <p className="text-2xl font-bold text-white">100%</p>
                 </div>
               </div>
             </Card>
@@ -169,6 +185,7 @@ export default function StudentManagement() {
                     <TableRow>
                       <TableHead className="font-bold">Student Name</TableHead>
                       <TableHead className="font-bold">Email</TableHead>
+                      <TableHead className="font-bold">Program</TableHead>
                       <TableHead className="font-bold">Status</TableHead>
                       <TableHead className="font-bold">Last Login</TableHead>
                       <TableHead className="font-bold text-right">Actions</TableHead>
@@ -189,6 +206,11 @@ export default function StudentManagement() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-muted-foreground">{student.email}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="border-primary/20 text-primary font-bold px-2 py-0.5">
+                            {getProgramCode(student.programIds)}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge 
