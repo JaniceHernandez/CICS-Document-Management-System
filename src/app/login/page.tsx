@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
+import { ShieldCheck, GraduationCap, ArrowLeft, Mail, Loader2, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,67 +28,121 @@ export default function LoginPage() {
   useEffect(() => {
     async function handleAuthFlow() {
       if (user && firestore) {
-        const userEmail = user.email || '';
-        
-        if (targetRole === 'admin') {
-          const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
-          const adminSnap = await getDoc(adminRoleRef);
+        setIsAuthenticating(true);
+        try {
+          const userDocRef = doc(firestore, 'users', user.uid);
+          const userSnap = await getDoc(userDocRef);
+          const userData = userSnap.data();
 
-          // In this prototype, we provision adminRole if they logged in via the admin portal with valid credentials
-          if (!adminSnap.exists()) {
-             setDocumentNonBlocking(adminRoleRef, { id: user.uid }, { merge: true });
+          // Check if account is blocked
+          if (userData?.status === 'blocked') {
+            toast({
+              title: "Account Blocked",
+              description: "Your account has been suspended. Please contact CICS administration.",
+              variant: "destructive"
+            });
+            await signOut(auth);
+            setIsAuthenticating(false);
+            return;
           }
 
-          setDocumentNonBlocking(doc(firestore, 'users', user.uid), {
-            id: user.uid,
-            email: userEmail,
-            fullName: user.displayName || 'Administrator',
-            role: 'Admin',
-            status: 'active',
-            lastLoginAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-          
-          router.push('/admin/dashboard');
-        } else {
-          // Student Flow
-          if (userEmail.endsWith('@neu.edu.ph')) {
-            const userProfileRef = doc(firestore, 'users', user.uid);
+          if (targetRole === 'admin') {
+            const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
+            const adminSnap = await getDoc(adminRoleRef);
+
+            // Provision admin role for prototype if using specific credentials
+            if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
+               await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
+            }
+
+            const isAdmin = adminSnap.exists() || user.email === 'admin@neu.edu.ph';
             
-            setDocumentNonBlocking(userProfileRef, {
+            if (!isAdmin) {
+              toast({
+                title: "Unauthorized",
+                description: "You do not have administrator privileges.",
+                variant: "destructive"
+              });
+              await signOut(auth);
+              setIsAuthenticating(false);
+              return;
+            }
+
+            await setDoc(userDocRef, {
               id: user.uid,
-              email: userEmail,
-              fullName: user.displayName || 'CICS Student',
-              role: 'Student',
+              email: user.email,
+              fullName: user.displayName || 'Administrator',
+              role: 'Admin',
               status: 'active',
               lastLoginAt: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true });
             
-            router.push('/student/documents');
+            router.push('/admin/dashboard');
           } else {
-            toast({
-              title: "Invalid Domain",
-              description: "Students must use an @neu.edu.ph institutional account.",
-              variant: "destructive"
-            });
-            await auth.signOut();
-            setIsAuthenticating(false);
+            // Student Flow
+            const userEmail = user.email || '';
+            if (userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test')) {
+              
+              // Determine if onboarding is needed
+              const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
+
+              if (!userSnap.exists()) {
+                await setDoc(userDocRef, {
+                  id: user.uid,
+                  email: userEmail,
+                  fullName: user.displayName || 'CICS Student',
+                  role: 'Student',
+                  status: 'active',
+                  createdAt: new Date().toISOString(),
+                  lastLoginAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  programIds: []
+                });
+              } else {
+                await setDoc(userDocRef, {
+                  lastLoginAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              }
+
+              if (needsOnboarding) {
+                router.push('/student/onboarding');
+              } else {
+                router.push('/student/documents');
+              }
+            } else {
+              toast({
+                title: "Invalid Domain",
+                description: "Students must use an @neu.edu.ph institutional account.",
+                variant: "destructive"
+              });
+              await signOut(auth);
+              setIsAuthenticating(false);
+            }
           }
+        } catch (error: any) {
+          console.error(error);
+          toast({
+            title: "Error",
+            description: error.message || "An unexpected error occurred during login.",
+            variant: "destructive"
+          });
+          setIsAuthenticating(false);
         }
       }
     }
 
-    handleAuthFlow();
-  }, [user, firestore, targetRole, router, auth, toast]);
+    if (user && !isUserLoading) {
+      handleAuthFlow();
+    }
+  }, [user, isUserLoading, firestore, targetRole, router, auth, toast]);
 
   const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
     try {
       await initiateGoogleSignIn(auth);
     } catch (error: any) {
-      // Don't show an error toast if the user simply closed the popup
       if (error.code !== 'auth/popup-closed-by-user') {
         toast({
           title: "Authentication Failed",
@@ -97,7 +150,6 @@ export default function LoginPage() {
           variant: "destructive"
         });
       }
-    } finally {
       setIsAuthenticating(false);
     }
   };
@@ -105,7 +157,6 @@ export default function LoginPage() {
   const handleAdminEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Strict requirement for prototype admin credentials
     if (email !== 'admin@neu.edu.ph' || password !== 'adminpassword') {
       toast({
         title: "Access Denied",
@@ -117,31 +168,32 @@ export default function LoginPage() {
 
     setIsAuthenticating(true);
     try {
-      // Attempt to sign in
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (signInError: any) {
-        // If user not found, create it for the prototype
-        if (signInError.code === 'auth/user-not-found') {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          throw signInError;
-        }
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      toast({
-        title: "Authentication Error",
-        description: error.message || "Failed to log in as administrator.",
-        variant: "destructive"
-      });
+      if (error.code === 'auth/user-not-found') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (createError: any) {
+          toast({ title: "Auth Error", description: createError.message, variant: "destructive" });
+        }
+      } else {
+        toast({
+          title: "Authentication Error",
+          description: error.message || "Failed to log in as administrator.",
+          variant: "destructive"
+        });
+      }
       setIsAuthenticating(false);
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || (user && isAuthenticating)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
+          <p className="text-muted-foreground font-medium">Verifying institutional identity...</p>
+        </div>
       </div>
     );
   }
@@ -228,7 +280,7 @@ export default function LoginPage() {
                   {isAuthenticating ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                      Authenticating...
+                      Checking...
                     </>
                   ) : (
                     'Enter Dashboard'
@@ -244,7 +296,7 @@ export default function LoginPage() {
                 {isAuthenticating ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                    Verifying...
+                    Signing in...
                   </>
                 ) : (
                   <>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,8 @@ import {
   Sparkles,
   Loader2,
   X,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   Select, 
@@ -33,20 +35,44 @@ import {
 import { summarizeDocument } from '@/ai/flows/summarize-document';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, getDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProgram, setSelectedProgram] = useState('all');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [userProgramIds, setUserProgramIds] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Onboarding guard
+  useEffect(() => {
+    async function checkOnboarding() {
+      if (user && firestore) {
+        const userSnap = await getDoc(doc(firestore, 'users', user.uid));
+        const userData = userSnap.data();
+        if (!userData?.programIds || userData.programIds.length === 0) {
+          router.push('/student/onboarding');
+        } else {
+          setUserProgramIds(userData.programIds);
+          // Set initial filter to user's program
+          if (userData.programIds.length > 0 && selectedProgram === 'all') {
+            setSelectedProgram(userData.programIds[0]);
+          }
+        }
+      }
+    }
+    if (!isUserLoading) {
+      checkOnboarding();
+    }
+  }, [user, isUserLoading, firestore, router]);
 
   // Firestore Queries
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
@@ -89,7 +115,7 @@ export default function StudentDocuments() {
       console.error('Summarization Error:', error);
       toast({
         title: "Summarization Error",
-        description: "Could not generate summary at this time. Please try again later.",
+        description: "Could not generate summary at this time.",
         variant: "destructive"
       });
     } finally {
@@ -110,6 +136,14 @@ export default function StudentDocuments() {
 
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
 
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav role="student" />
@@ -121,9 +155,19 @@ export default function StudentDocuments() {
               <h1 className="text-3xl font-headline font-bold text-primary">CICS Document Library</h1>
               <p className="text-muted-foreground">Search and access official academic resources.</p>
             </div>
-            <div className="flex gap-2 bg-primary/5 p-2 rounded-2xl items-center border border-primary/10">
-              <Sparkles className="h-5 w-5 text-secondary animate-pulse" />
-              <span className="text-sm font-medium text-primary">AI Summarization Enabled</span>
+            <div className="flex gap-4 items-center">
+              {userProgramIds.length > 0 && (
+                <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-bold text-primary">
+                    {programs?.find(p => p.id === userProgramIds[0])?.shortCode} Portal
+                  </span>
+                </div>
+              )}
+              <div className="flex gap-2 bg-secondary/10 p-2 rounded-2xl items-center border border-secondary/20">
+                <Sparkles className="h-5 w-5 text-secondary animate-pulse" />
+                <span className="text-sm font-medium text-primary">AI Summarization Enabled</span>
+              </div>
             </div>
           </header>
 
