@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -87,11 +86,11 @@ export function AnnouncementDialog({ open, onOpenChange, announcement: editAnn }
 
       if (isEdit) {
         updateDocumentNonBlocking(doc(firestore, 'announcements', annId), annData);
-        logActivity(firestore, user.uid, 'DOCUMENT_EDIT', `Updated announcement: ${title}`);
+        logActivity(firestore, user.uid, 'ANNOUNCEMENT_EDIT', `Updated announcement: ${title}`);
         toast({ title: "Announcement Updated" });
       } else {
         setDocumentNonBlocking(doc(firestore, 'announcements', annId), annData, { merge: true });
-        logActivity(firestore, user.uid, 'DOCUMENT_UPLOAD', `Created announcement: ${title}`);
+        logActivity(firestore, user.uid, 'ANNOUNCEMENT_CREATE', `Created announcement: ${title}`);
         toast({ title: "Announcement Published" });
       }
 

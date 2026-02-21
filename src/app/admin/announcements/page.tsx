@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -57,7 +56,7 @@ export default function AdminAnnouncements() {
     if (!firestore || !user) return;
     if (confirm(`Delete announcement: "${ann.title}"?`)) {
       deleteDocumentNonBlocking(doc(firestore, 'announcements', ann.id));
-      logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted announcement: ${ann.title}`);
+      logActivity(firestore, user.uid, 'ANNOUNCEMENT_DELETE', `Deleted announcement: ${ann.title}`);
       toast({ title: "Announcement Removed" });
     }
   };

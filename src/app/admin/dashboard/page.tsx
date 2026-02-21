@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -12,14 +11,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
   LineChart,
   Line,
-  Legend
+  Legend,
+  Cell
 } from 'recharts';
 import { 
   Users, 
@@ -27,19 +22,15 @@ import {
   Download, 
   TrendingUp, 
   Loader2, 
-  MessageSquare, 
   Activity, 
-  Calendar,
   FileDown,
-  ArrowUpRight,
-  Filter,
   MousePointer2,
   AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { format, subDays, isSameDay } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,7 +40,7 @@ const COLORS = ['#003366', '#FFD700', '#004080', '#FFC107', '#002244'];
 export default function AdminDashboard() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const [timeRange, setTimeRange] = useState('7d');
+  const [timeRange, setTimeRange] = useState('daily');
 
   // Firestore Queries
   const activityLogsQuery = useMemoFirebase(() => {
@@ -92,7 +83,7 @@ export default function AdminDashboard() {
   // Trend Data Generation based on TimeRange
   const getTrendData = () => {
     const now = new Date();
-    let days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+    let days = timeRange === 'daily' ? 7 : timeRange === 'weekly' ? 30 : 90;
     const interval = Array.from({ length: days }, (_, i) => subDays(now, i)).reverse();
     
     return interval.map(date => {
@@ -107,11 +98,11 @@ export default function AdminDashboard() {
 
   const trendData = getTrendData();
 
-  // Documents Per Category
+  // Documents Per Category (Column Chart)
   const categoryStats = allCategories?.map(cat => ({
     name: cat.name,
-    value: allDocs?.filter(d => d.categoryId === cat.id).length || 0
-  })).filter(stat => stat.value > 0) || [];
+    count: allDocs?.filter(d => d.categoryId === cat.id).length || 0
+  })).sort((a, b) => b.count - a.count) || [];
 
   // Export Logic
   const exportToCSV = () => {
@@ -221,9 +212,9 @@ export default function AdminDashboard() {
                 </div>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
                   <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
-                    <TabsTrigger value="7d" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">7D</TabsTrigger>
-                    <TabsTrigger value="30d" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">30D</TabsTrigger>
-                    <TabsTrigger value="90d" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">90D</TabsTrigger>
+                    <TabsTrigger value="daily" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Daily</TabsTrigger>
+                    <TabsTrigger value="weekly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Weekly</TabsTrigger>
+                    <TabsTrigger value="quarterly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Quarterly</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </CardHeader>
@@ -260,25 +251,25 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryStats}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={120}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
+                  <BarChart data={categoryStats}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fill: '#888', fontSize: 10}} 
+                    />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 10}} />
+                    <Tooltip 
+                      cursor={{fill: 'transparent'}}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                    />
+                    <Bar dataKey="count" radius={[10, 10, 0, 0]}>
                       {categoryStats.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-                    />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                  </PieChart>
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -309,12 +300,13 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-6">
                             <div className={cn(
                               "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                              log.actionType === 'DOCUMENT_UPLOAD' ? "bg-blue-50 text-blue-600" :
-                              log.actionType === 'DOCUMENT_DOWNLOAD' ? "bg-emerald-50 text-emerald-600" :
-                              log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" : "bg-purple-50 text-purple-600"
+                              log.actionType.includes('UPLOAD') || log.actionType.includes('CREATE') ? "bg-blue-50 text-blue-600" :
+                              log.actionType.includes('DOWNLOAD') ? "bg-emerald-50 text-emerald-600" :
+                              log.actionType === 'LOGIN' ? "bg-zinc-100 text-zinc-600" :
+                              log.actionType.includes('DELETE') ? "bg-red-50 text-red-600" : "bg-purple-50 text-purple-600"
                             )}>
-                              {log.actionType === 'DOCUMENT_UPLOAD' ? <FileText className="h-5 w-5" /> :
-                               log.actionType === 'DOCUMENT_DOWNLOAD' ? <Download className="h-5 w-5" /> :
+                              {log.actionType.includes('UPLOAD') || log.actionType.includes('CREATE') ? <FileText className="h-5 w-5" /> :
+                               log.actionType.includes('DOWNLOAD') ? <Download className="h-5 w-5" /> :
                                log.actionType === 'LOGIN' ? <Users className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
                             </div>
                             <div>
@@ -322,7 +314,6 @@ export default function AdminDashboard() {
                                 {userProfile?.fullName || 'Unknown User'}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1 font-medium">
-                                <span className="font-bold text-primary mr-1">{log.actionType.replace(/_/g, ' ')}</span>
                                 {log.details}
                               </p>
                             </div>

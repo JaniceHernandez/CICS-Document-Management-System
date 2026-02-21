@@ -4,7 +4,22 @@ import { collection, doc } from 'firebase/firestore';
 import { Firestore } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-export type ActionType = 'LOGIN' | 'DOCUMENT_DOWNLOAD' | 'DOCUMENT_UPLOAD' | 'DOCUMENT_EDIT' | 'DOCUMENT_DELETE' | 'USER_BLOCKED' | 'INQUIRY_SUBMITTED';
+export type ActionType = 
+  | 'LOGIN' 
+  | 'DOCUMENT_UPLOAD' 
+  | 'DOCUMENT_EDIT' 
+  | 'DOCUMENT_DELETE' 
+  | 'DOCUMENT_DOWNLOAD' 
+  | 'USER_BLOCKED' 
+  | 'USER_UNBLOCKED'
+  | 'INQUIRY_SUBMITTED'
+  | 'INQUIRY_PERIOD_CREATE'
+  | 'INQUIRY_PERIOD_UPDATE'
+  | 'ANNOUNCEMENT_CREATE'
+  | 'ANNOUNCEMENT_EDIT'
+  | 'ANNOUNCEMENT_DELETE'
+  | 'CATEGORY_CREATE'
+  | 'PROGRAM_CREATE';
 
 export function logActivity(
   firestore: Firestore,

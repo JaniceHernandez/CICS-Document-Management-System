@@ -54,15 +54,18 @@ export default function StudentManagement() {
   const toggleUserStatus = (student: any) => {
     if (!firestore || !adminUser) return;
     const newStatus = student.status === 'active' ? 'blocked' : 'active';
+    const action = newStatus === 'blocked' ? 'USER_BLOCKED' : 'USER_UNBLOCKED';
+    
     updateDocumentNonBlocking(doc(firestore, 'users', student.id), {
       status: newStatus,
       updatedAt: new Date().toISOString()
     });
+    
     logActivity(
       firestore, 
       adminUser.uid, 
-      'USER_BLOCKED', 
-      `${newStatus === 'blocked' ? 'Blocked' : 'Unblocked'} student: ${student.fullName}`, 
+      action, 
+      `${newStatus === 'blocked' ? 'Blocked' : 'Unblocked'} student access for: ${student.fullName}`, 
       undefined, 
       student.id
     );

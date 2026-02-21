@@ -3,14 +3,14 @@
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, FolderTree, GraduationCap, Calendar, Plus, Save } from 'lucide-react';
+import { FolderTree, GraduationCap, Calendar, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { logActivity } from '@/lib/activity-logging';
 
 export default function AdminSettings() {
   const firestore = useFirestore();
@@ -28,23 +28,25 @@ export default function AdminSettings() {
   const { data: periods } = useCollection(periodsQuery);
 
   const addCategory = async () => {
-    if (!firestore || !newCat) return;
+    if (!firestore || !adminUser || !newCat) return;
     await addDoc(collection(firestore, 'categories'), {
       name: newCat,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+    logActivity(firestore, adminUser.uid, 'CATEGORY_CREATE', `Added new document category: ${newCat}`);
     setNewCat('');
   };
 
   const addProgram = async () => {
-    if (!firestore || !newProgName || !newProgCode) return;
+    if (!firestore || !adminUser || !newProgName || !newProgCode) return;
     await addDoc(collection(firestore, 'programs'), {
       name: newProgName,
       shortCode: newProgCode,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+    logActivity(firestore, adminUser.uid, 'PROGRAM_CREATE', `Registered new academic program: ${newProgCode}`);
     setNewProgName('');
     setNewProgCode('');
   };
