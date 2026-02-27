@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bell, Calendar, Loader2, Ghost, ChevronDown, ChevronUp, Info } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,10 +24,28 @@ export default function StudentAnnouncements() {
     }
   }, [user, isUserLoading, router]);
 
-  const announcementsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'announcements') : null, [firestore, user]);
-  const { data: announcements, isLoading } = useCollection(announcementsQuery);
+  // Fetch user profile to get program affiliations
+  const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
-  const publishedAnnouncements = announcements?.filter(ann => ann.status !== 'hidden');
+  const announcementsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'announcements') : null, [firestore, user]);
+  const { data: announcements, isLoading: isAnnouncementsLoading } = useCollection(announcementsQuery);
+
+  const isLoading = isUserLoading || isProfileLoading || isAnnouncementsLoading;
+
+  // Filter announcements based on status and program targeting
+  const targetedAnnouncements = announcements?.filter(ann => {
+    // 1. Must be published
+    if (ann.status === 'hidden') return false;
+    
+    // 2. If no targets specified, it's global for all students
+    if (!ann.targetProgramIds || ann.targetProgramIds.length === 0) return true;
+    
+    // 3. If targets exist, check if student's program is in the list
+    if (!userProfile?.programIds || userProfile.programIds.length === 0) return false;
+    
+    return ann.targetProgramIds.some((pid: string) => userProfile.programIds.includes(pid));
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -63,7 +81,7 @@ export default function StudentAnnouncements() {
             <div className="hidden md:flex items-center gap-2 bg-zinc-100/50 px-4 py-2 rounded-2xl border border-zinc-200/50">
               <Info className="h-4 w-4 text-zinc-400" />
               <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                Latest Posts: {publishedAnnouncements?.length || 0}
+                Latest Posts: {targetedAnnouncements?.length || 0}
               </span>
             </div>
           </header>
@@ -73,7 +91,7 @@ export default function StudentAnnouncements() {
               <Loader2 className="h-10 w-10 text-primary animate-spin" />
               <p className="text-muted-foreground font-bold text-sm uppercase tracking-widest">Streaming Broadcasts...</p>
             </div>
-          ) : !publishedAnnouncements || publishedAnnouncements.length === 0 ? (
+          ) : !targetedAnnouncements || targetedAnnouncements.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-40 text-center">
               <div className="w-24 h-24 bg-zinc-50 rounded-3xl flex items-center justify-center mb-8 shadow-inner">
                 <Ghost className="h-12 w-12 text-zinc-300" />
@@ -85,7 +103,7 @@ export default function StudentAnnouncements() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {publishedAnnouncements.sort((a,b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map((ann) => {
+              {targetedAnnouncements.sort((a,b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()).map((ann) => {
                 const isExpanded = expandedIds.has(ann.id);
                 return (
                   <Card key={ann.id} className="border-none shadow-md rounded-3xl overflow-hidden bg-white hover:shadow-xl transition-all border-l-[6px] border-l-secondary">
@@ -96,7 +114,7 @@ export default function StudentAnnouncements() {
                           {new Date(ann.publishDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
                         </div>
                         <Badge className="bg-primary/5 text-primary border-none rounded-full px-4 py-1 text-[9px] font-bold uppercase tracking-widest">
-                          Institutional
+                          {ann.targetProgramIds && ann.targetProgramIds.length > 0 ? 'Targeted' : 'Institutional'}
                         </Badge>
                       </div>
                       <CardTitle className="text-2xl font-headline font-bold text-primary leading-tight">
