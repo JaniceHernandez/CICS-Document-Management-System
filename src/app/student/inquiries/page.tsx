@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -25,12 +26,19 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StudentInquiries() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('active');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const inquiriesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -69,6 +77,14 @@ export default function StudentInquiries() {
       setIsSubmitting(false);
     }
   };
+
+  if (isUserLoading || (!user && !isUserLoading)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

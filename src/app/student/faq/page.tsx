@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { 
   Accordion,
@@ -25,11 +27,12 @@ import {
 } from 'lucide-react';
 import { askChatbot } from '@/ai/flows/faq-chatbot';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
 
 const FAQS = [
   { 
     q: "How do I download my program checklist?", 
-    a: "Navigate to the 'All Documents' section, use the 'Category' filter to select 'Checklists', find your program (BSIT, BSCS, or BSIS), and click the 'Download' button on the document card."
+    a: "Navigate to the 'Library' section, use the 'Category' filter to select 'Checklists', find your program, and click the 'Download' button on the document card."
   },
   { 
     q: "I can't log in with my personal Gmail account.", 
@@ -37,21 +40,29 @@ const FAQS = [
   },
   { 
     q: "Where can I submit an inquiry about my grades?", 
-    a: "While this platform is for document management, you can submit general inquiries in the 'My Inquiries' section. For specific grade concerns, we recommend visiting the CICS Registrar office or using the official university SIS."
+    a: "While this platform is for document management, you can submit general inquiries in the 'My Inquiries' section. For specific grade concerns, we recommend visiting the CICS Registrar office."
   },
   { 
     q: "How often are the documents updated?", 
-    a: "Admins update documents as soon as new curriculum changes or university policies are approved. Check the 'Recently Uploaded' sort option in the document library to see the latest files."
+    a: "Admins update documents as soon as new curriculum changes or university policies are approved. Check the 'Library' to see the latest files."
   },
 ];
 
 export default function StudentSupport() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const [messages, setMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
     { role: 'bot', text: 'Hello! I am the CICS Virtual Assistant. How can I help you with documents or school policies today?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -76,6 +87,14 @@ export default function StudentSupport() {
       setIsTyping(false);
     }
   };
+
+  if (isUserLoading || (!user && !isUserLoading)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
