@@ -2,17 +2,19 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { logActivity } from '@/lib/activity-logging';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 function LoginContent() {
   const router = useRouter();
@@ -20,6 +22,7 @@ function LoginContent() {
   const { auth, firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
   const targetRole = searchParams.get('role') === 'admin' ? 'admin' : 'student';
+  const logoImage = PlaceHolderImages.find(img => img.id === 'cics-logo');
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +38,6 @@ function LoginContent() {
         const userSnap = await getDoc(userDocRef);
         const userData = userSnap.data();
 
-        // 1. Check if account is blocked
         if (userData?.status === 'blocked') {
           toast({
             title: "Account Blocked",
@@ -47,12 +49,10 @@ function LoginContent() {
           return;
         }
 
-        // 2. Admin Redirection Logic
         if (targetRole === 'admin') {
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
 
-          // Special handling for master admin if doc doesn't exist yet
           if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
             await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
           }
@@ -70,7 +70,6 @@ function LoginContent() {
             return;
           }
 
-          // Sync admin profile
           await setDoc(userDocRef, {
             id: user.uid,
             email: user.email,
@@ -86,16 +85,13 @@ function LoginContent() {
           return;
         }
 
-        // 3. Student Redirection Logic
         const userEmail = user.email || '';
-        // Allow @neu.edu.ph or development test accounts
         const isAuthorizedDomain = userEmail.endsWith('@neu.edu.ph') || 
                                    userEmail.includes('test') || 
                                    userEmail.includes('neu');
 
         if (isAuthorizedDomain) {
           if (!userSnap.exists()) {
-            // New Student Profile creation
             await setDoc(userDocRef, {
               id: user.uid,
               email: userEmail,
@@ -108,7 +104,6 @@ function LoginContent() {
               programIds: []
             });
           } else {
-            // Update existing student profile
             await setDoc(userDocRef, {
               lastLoginAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
@@ -117,7 +112,6 @@ function LoginContent() {
 
           logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
 
-          // Check if onboarding is needed (no program assigned)
           const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
           
           if (needsOnboarding) {
@@ -195,14 +189,12 @@ function LoginContent() {
     }
   };
 
-  // If already logged in and waiting for handleAuthFlow logic to complete
   if (!isUserLoading && user && !isAuthenticating) {
     return (
       <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-lg font-bold text-primary">Verifying session...</p>
-          <p className="text-muted-foreground">Please wait while we sync your institutional credentials.</p>
+          <p className="text-lg font-bold text-primary">Verifying institutional credentials...</p>
         </div>
       </div>
     );
@@ -210,37 +202,47 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
-      <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-medium">
+      <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-bold uppercase tracking-wider text-xs">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
+        Back to Hub
       </Link>
       
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/20 rotate-3">
-            <ShieldCheck className="h-12 w-12 text-white" />
+          <div className="mx-auto w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl p-4 transition-transform hover:scale-105">
+            {logoImage && (
+              <Image 
+                src={logoImage.imageUrl} 
+                alt="NEU Logo" 
+                width={80} 
+                height={80} 
+                className="object-contain"
+              />
+            )}
           </div>
-          <h1 className="text-2xl font-headline font-bold text-primary tracking-tight uppercase">CICS Document Management</h1>
-          <p className="text-muted-foreground mt-2 font-body text-lg">Institutional Access Portal</p>
+          <h1 className="text-xl md:text-2xl font-headline font-bold text-primary tracking-tight uppercase leading-tight">
+            COLLEGE OF INFORMATICS AND COMPUTING STUDIES
+          </h1>
+          <p className="text-muted-foreground mt-2 font-bold uppercase tracking-[0.2em] text-xs">Document Management System</p>
         </div>
 
         <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="space-y-2 pb-8 pt-10 text-center">
-            <CardTitle className="text-2xl font-headline font-bold">
-              {targetRole === 'admin' ? 'Admin Portal' : 'Student Access'}
+          <CardHeader className="space-y-2 pb-8 pt-10 text-center bg-zinc-50/50 border-b">
+            <CardTitle className="text-2xl font-headline font-bold text-primary">
+              {targetRole === 'admin' ? 'Administrator Portal' : 'Student Access'}
             </CardTitle>
-            <CardDescription className="text-base">
+            <CardDescription className="text-sm font-medium">
               {targetRole === 'admin' 
-                ? 'Authorized personnel login only.' 
+                ? 'Authorized CICS personnel only.' 
                 : 'Sign in with your @neu.edu.ph account.'}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="px-10 pb-10">
+          <CardContent className="px-10 py-10">
             {targetRole === 'admin' ? (
-              <form onSubmit={handleAdminEmailLogin} className="space-y-4">
+              <form onSubmit={handleAdminEmailLogin} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Institutional Email</Label>
+                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Institutional Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -249,14 +251,14 @@ function LoginContent() {
                       placeholder="admin@neu.edu.ph"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 rounded-xl"
+                      className="pl-10 h-12 rounded-xl bg-zinc-50 border-none focus-visible:ring-primary shadow-inner"
                       disabled={isAuthenticating}
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Security Key</Label>
+                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Security Key</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -265,7 +267,7 @@ function LoginContent() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-12 rounded-xl"
+                      className="pl-10 h-12 rounded-xl bg-zinc-50 border-none focus-visible:ring-primary shadow-inner"
                       disabled={isAuthenticating}
                       required
                     />
@@ -273,19 +275,24 @@ function LoginContent() {
                 </div>
                 <Button 
                   type="submit"
-                  className="w-full h-14 rounded-2xl font-bold text-lg"
+                  className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Dashboard'}
+                  {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Portal'}
                 </Button>
               </form>
             ) : (
               <Button 
-                className="w-full h-14 rounded-2xl font-bold text-lg" 
+                className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3" 
                 onClick={handleGoogleLogin}
                 disabled={isAuthenticating}
               >
-                {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Continue with Google'}
+                {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                  <>
+                    <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={20} height={20} />
+                    Institutional Sign In
+                  </>
+                )}
               </Button>
             )}
           </CardContent>
@@ -293,7 +300,7 @@ function LoginContent() {
           <CardFooter className="bg-zinc-50/50 p-6 flex justify-center border-t">
             <Link 
               href={`/login?role=${targetRole === 'admin' ? 'student' : 'admin'}`}
-              className="text-sm font-bold text-primary hover:underline"
+              className="text-xs font-bold text-primary hover:underline uppercase tracking-widest"
               onClick={() => setIsAuthenticating(false)}
             >
               {targetRole === 'admin' ? 'Switch to Student Access' : 'Switch to Admin Access'}
@@ -308,7 +315,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
       </div>
     }>
