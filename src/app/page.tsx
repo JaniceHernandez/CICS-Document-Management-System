@@ -54,8 +54,8 @@ export default function LandingPage() {
                     <ShieldCheck className="h-4 w-4 mr-2" />
                     Official Institutional Repository
                   </div>
-                  <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-5xl xl:text-7xl/none uppercase leading-tight">
-                    CICS DOCUMENT MANAGEMENT SYSTEM
+                  <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-5xl xl:text-6xl/none uppercase leading-tight">
+                    COLLEGE OF INFORMATICS AND COMPUTING STUDIES DOCUMENT MANAGEMENT SYSTEM
                   </h1>
                   <p className="max-w-[600px] text-zinc-200 md:text-xl font-body leading-relaxed">
                     Secure institutional access to curriculum documents, academic resources, and official university announcements.
@@ -63,13 +63,8 @@ export default function LandingPage() {
                 </div>
                 <div className="flex flex-col gap-4 sm:flex-row pt-4">
                   <Link href="/login?role=student">
-                    <Button size="lg" className="w-full sm:w-auto bg-secondary text-primary hover:bg-secondary/90 font-bold px-10 h-14 rounded-full shadow-2xl shadow-secondary/20 text-lg transition-transform hover:scale-105">
-                      Student Access
-                    </Button>
-                  </Link>
-                  <Link href="/login?role=admin">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto border-white/30 text-white hover:bg-white hover:text-primary font-bold px-10 h-14 rounded-full text-lg transition-transform hover:scale-105">
-                      Administrator Portal
+                    <Button size="lg" className="w-full sm:w-auto bg-secondary text-primary hover:bg-secondary/90 font-bold px-12 h-14 rounded-full shadow-2xl shadow-secondary/20 text-lg transition-transform hover:scale-105">
+                      Get Started
                     </Button>
                   </Link>
                 </div>
