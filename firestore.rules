@@ -44,7 +44,8 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       // Allow students to submit documents
       allow create: if isSignedIn() && request.resource.data.uploaderId == request.auth.uid;
-      allow delete: if isAdmin();
+      // Allow students to delete their own submissions
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
       // Students need to update the downloadCount metadata or their own submissions
       allow update: if isSignedIn() && (
         isAdmin() || 
@@ -86,7 +87,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    match /inquiryPeriods/{inquiryPeriodId} {
+    match /databases/{database}/documents/inquiryPeriods/{inquiryPeriodId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }

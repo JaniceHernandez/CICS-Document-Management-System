@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
@@ -221,7 +220,7 @@ function LoginContent() {
           <div className="mx-auto w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/20 rotate-3">
             <ShieldCheck className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">CICS Hub</h1>
+          <h1 className="text-2xl font-headline font-bold text-primary tracking-tight uppercase">CICS Document Management</h1>
           <p className="text-muted-foreground mt-2 font-body text-lg">Institutional Access Portal</p>
         </div>
 

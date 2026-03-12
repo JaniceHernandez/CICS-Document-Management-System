@@ -34,7 +34,7 @@ const adminLinks = [
 
 const studentLinks = [
   { href: '/student/documents', label: 'Library', icon: Search },
-  { href: '/student/submit', label: 'Submit Document', icon: Upload },
+  { href: '/student/submit', label: 'My Submissions', icon: Upload },
   { href: '/student/inquiries', label: 'My Inquiries', icon: MessageSquare },
   { href: '/student/faq', label: 'Support', icon: HelpCircle },
   { href: '/student/announcements', label: 'Announcements', icon: Bell },
@@ -63,7 +63,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
           <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center shadow-lg shadow-secondary/20">
             <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
-          <span className="text-2xl font-headline font-bold tracking-tight">CICS Hub</span>
+          <span className="text-xl font-headline font-bold tracking-tight">CICS Hub</span>
         </div>
 
         <nav className="space-y-1.5">

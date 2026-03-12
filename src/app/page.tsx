@@ -16,7 +16,7 @@ export default function LandingPage() {
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center mr-2">
             <FileText className="text-white h-5 w-5" />
           </div>
-          <span className="text-xl font-headline font-bold text-primary">CICS Docs Hub</span>
+          <span className="text-xl font-headline font-bold text-primary">CICS DOCUMENT MANAGEMENT SYSTEM</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Link className="text-sm font-medium hover:underline underline-offset-4 flex items-center" href="/login">
@@ -33,7 +33,7 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-headline font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                    Centralized Document Access for CICS
+                    COLLEGE OF INFORMATICS AND COMPUTING STUDIES DOCUMENT MANAGEMENT SYSTEM
                   </h1>
                   <p className="max-w-[600px] text-zinc-200 md:text-xl font-body">
                     Access official university documents, policies, and resources securely. Powered by NEU Google authentication.
@@ -173,7 +173,7 @@ export default function LandingPage() {
       <footer className="w-full py-6 border-t bg-white">
         <div className="container px-4 md:px-6 mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2024 College of Informatics and Computer Studies (CICS). All rights reserved.
+            © 2024 College of Informatics and Computing Studies (CICS). All rights reserved.
           </p>
           <nav className="flex gap-4 sm:gap-6">
             <Link className="text-sm hover:underline underline-offset-4" href="#">

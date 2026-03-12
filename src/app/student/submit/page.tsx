@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -16,10 +15,26 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
-import { uploadToBlob } from '@/app/actions/storage';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, query, where, deleteDoc } from 'firebase/firestore';
+import { uploadToBlob, deleteFromBlob } from '@/app/actions/storage';
+import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { 
   Loader2, 
@@ -29,11 +44,15 @@ import {
   FileText, 
   Send, 
   Users, 
-  ShieldCheck,
-  Info 
+  ShieldCheck, 
+  Info,
+  Trash2,
+  Edit,
+  ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function StudentSubmitPage() {
   const firestore = useFirestore();
@@ -48,6 +67,12 @@ export default function StudentSubmitPage() {
   const [categoryId, setCategoryId] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
+  // Edit State
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCatId, setEditCatId] = useState('');
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
@@ -55,7 +80,13 @@ export default function StudentSubmitPage() {
   }, [user, isUserLoading, router]);
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  const mySubmissionsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'documents'), where('uploaderId', '==', user.uid));
+  }, [firestore, user]);
+
   const { data: categories } = useCollection(categoriesQuery);
+  const { data: submissions, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
 
   const resetForm = () => {
     setTitle('');
@@ -138,6 +169,42 @@ export default function StudentSubmitPage() {
     }
   };
 
+  const handleEdit = (doc: any) => {
+    setEditingDoc(doc);
+    setEditTitle(doc.title);
+    setEditDesc(doc.description);
+    setEditCatId(doc.categoryId);
+  };
+
+  const saveEdit = () => {
+    if (!firestore || !user || !editingDoc) return;
+    updateDocumentNonBlocking(doc(firestore, 'documents', editingDoc.id), {
+      title: editTitle,
+      description: editDesc,
+      categoryId: editCatId,
+      updatedAt: new Date().toISOString()
+    });
+    logActivity(firestore, user.uid, 'DOCUMENT_EDIT', `Updated metadata for submission: ${editTitle}`, editingDoc.id);
+    setEditingDoc(null);
+    toast({ title: "Submission Updated" });
+  };
+
+  const handleDelete = async (docData: any) => {
+    if (!firestore || !user) return;
+    if (confirm(`Are you sure you want to delete "${docData.title}"?`)) {
+      try {
+        await deleteDoc(doc(firestore, 'documents', docData.id));
+        if (docData.fileUrl) {
+          await deleteFromBlob(docData.fileUrl);
+        }
+        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted personal submission: ${docData.title}`, docData.id);
+        toast({ title: "Submission Removed" });
+      } catch (e: any) {
+        toast({ variant: "destructive", title: "Error", description: e.message });
+      }
+    }
+  };
+
   if (isUserLoading || (!user && !isUserLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
@@ -151,10 +218,10 @@ export default function StudentSubmitPage() {
       <SidebarNav role="student" />
       
       <main className="flex-1 ml-64 p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-12">
           <header>
-            <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Document Submission</h1>
-            <p className="text-muted-foreground text-lg">Share educational resources or submit requirements to administrators.</p>
+            <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Institutional Document Management</h1>
+            <p className="text-muted-foreground text-lg">Submit academic resources and manage your uploaded materials.</p>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -163,9 +230,8 @@ export default function StudentSubmitPage() {
                 <CardHeader className="p-8 border-b border-zinc-50">
                   <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                     <Upload className="h-6 w-6" />
-                    Upload Details
+                    New Submission
                   </CardTitle>
-                  <CardDescription>Provide metadata for your institutional submission.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-8">
                   <div className="space-y-4">
@@ -254,7 +320,7 @@ export default function StudentSubmitPage() {
                         value={description} 
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Provide a brief context for this document..."
-                        className="min-h-[150px] rounded-2xl bg-zinc-50 border-none shadow-inner p-6 resize-none focus-visible:ring-primary"
+                        className="min-h-[120px] rounded-2xl bg-zinc-50 border-none shadow-inner p-6 resize-none focus-visible:ring-primary"
                       />
                     </div>
                   </div>
@@ -273,7 +339,7 @@ export default function StudentSubmitPage() {
                     ) : (
                       <>
                         <Send className="h-5 w-5 mr-3" />
-                        Submit to Admin
+                        Submit for Review
                       </>
                     )}
                   </Button>
@@ -302,27 +368,150 @@ export default function StudentSubmitPage() {
                     </div>
                     <p className="text-sm text-white/80 leading-relaxed">All submissions are reviewed by the CICS administration before general release.</p>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                      <ShieldCheck className="h-3 w-3 text-primary" />
-                    </div>
-                    <p className="text-sm text-white/80 leading-relaxed">By submitting, you affirm that you have the right to share this material academically.</p>
-                  </div>
                 </CardContent>
               </Card>
 
-              <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 flex gap-4">
-                <AlertCircle className="h-6 w-6 text-amber-600 shrink-0" />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-amber-900">Privacy Notice</p>
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    Your institutional ID is recorded with every submission for auditing and security monitoring.
-                  </p>
+              <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100 space-y-4">
+                <div className="flex items-center gap-3 text-primary font-bold">
+                  <ShieldCheck className="h-5 w-5" />
+                  Audit Trail
                 </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Every submission is logged with your institutional ID. Misuse or unauthorized uploads will be subject to university policy.
+                </p>
               </div>
             </div>
           </div>
+
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-headline font-bold text-primary">Monitoring My Uploads</h2>
+              <Badge variant="outline" className="border-primary/20 text-primary font-bold">
+                {submissions?.length || 0} TOTAL SUBMISSIONS
+              </Badge>
+            </div>
+            
+            <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+              <Table>
+                <TableHeader className="bg-zinc-50/50">
+                  <TableRow className="border-none">
+                    <TableHead className="font-bold px-8 py-5 text-[10px] uppercase tracking-widest">Document Title</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Submitted</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
+                    <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {submissionsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-32 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      </TableCell>
+                    </TableRow>
+                  ) : submissions?.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                        You haven't submitted any documents yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    submissions?.sort((a,b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()).map((sub) => (
+                      <TableRow key={sub.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
+                        <TableCell className="px-8 py-4">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-primary/40" />
+                            <span className="font-bold text-zinc-800">{sub.title}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-zinc-500">
+                          {new Date(sub.uploadDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] font-bold uppercase tracking-widest px-3">
+                            PENDING REVIEW
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right px-8">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="rounded-xl h-9 w-9 text-zinc-400 hover:text-primary hover:bg-primary/5"
+                              onClick={() => handleEdit(sub)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="rounded-xl h-9 w-9 text-zinc-400 hover:text-destructive hover:bg-destructive/5"
+                              onClick={() => handleDelete(sub)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <a 
+                              href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </section>
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
+          <DialogContent className="max-w-xl rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
+            <DialogHeader className="p-8 bg-primary text-white">
+              <DialogTitle className="text-2xl font-bold font-headline">Modify Submission</DialogTitle>
+              <DialogDescription className="text-white/70">Update metadata for your institutional resource.</DialogDescription>
+            </DialogHeader>
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Resource Title</Label>
+                <Input 
+                  value={editTitle} 
+                  onChange={(e) => setEditTitle(e.target.value)} 
+                  className="h-12 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Category</Label>
+                <Select value={editCatId} onValueChange={setEditCatId}>
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {categories?.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Description</Label>
+                <Textarea 
+                  value={editDesc} 
+                  onChange={(e) => setEditDesc(e.target.value)} 
+                  className="min-h-[120px] rounded-xl"
+                />
+              </div>
+            </div>
+            <DialogFooter className="p-8 bg-zinc-50 border-t">
+              <Button variant="ghost" onClick={() => setEditingDoc(null)} className="rounded-xl px-6 font-bold">Cancel</Button>
+              <Button onClick={saveEdit} className="bg-primary text-white rounded-xl px-8 font-bold shadow-lg shadow-primary/20">Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
