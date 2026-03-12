@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -79,7 +80,7 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
-  // Filtering Logic: Only show documents for the student's program(s) OR "All Programs" (programIds is empty)
+  // Filtering Logic: Only show documents for the student's program(s) OR "All Programs" (Global)
   const filteredDocs = documents?.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
@@ -20,7 +21,17 @@ import { collection, doc } from 'firebase/firestore';
 import { uploadToBlob } from '@/app/actions/storage';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { Loader2, Upload, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { 
+  Loader2, 
+  Upload, 
+  CheckCircle2, 
+  AlertCircle, 
+  FileText, 
+  Send, 
+  Users, 
+  ShieldCheck,
+  Info 
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
