@@ -16,9 +16,7 @@ import {
   ShieldCheck,
   Info,
   ArrowUpDown,
-  Ghost,
-  Plus,
-  Upload
+  Ghost
 } from 'lucide-react';
 import { 
   Select, 
@@ -40,7 +38,6 @@ import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebas
 import { collection, doc, getDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { SubmitDocumentDialog } from '@/components/student/submit-document-dialog';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
@@ -51,7 +48,6 @@ export default function StudentDocuments() {
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -166,13 +162,6 @@ export default function StudentDocuments() {
               <p className="text-muted-foreground">Access institutional resources for {studentProgramCode}.</p>
             </div>
             <div className="flex gap-4 items-center">
-              <Button 
-                onClick={() => setIsSubmitDialogOpen(true)}
-                className="bg-primary text-white rounded-full h-11 px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Submit Resource
-              </Button>
               {userProfile?.programIds?.length > 0 && (
                 <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />
@@ -301,11 +290,6 @@ export default function StudentDocuments() {
           )}
         </div>
       </main>
-
-      <SubmitDocumentDialog 
-        open={isSubmitDialogOpen} 
-        onOpenChange={setIsSubmitDialogOpen} 
-      />
 
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">

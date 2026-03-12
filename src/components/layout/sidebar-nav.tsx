@@ -13,7 +13,8 @@ import {
   LogOut,
   MessageSquare,
   ShieldCheck,
-  BarChart3
+  BarChart3,
+  Upload
 } from 'lucide-react';
 import { useFirebase, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -33,6 +34,7 @@ const adminLinks = [
 
 const studentLinks = [
   { href: '/student/documents', label: 'Library', icon: Search },
+  { href: '/student/submit', label: 'Submit Document', icon: Upload },
   { href: '/student/inquiries', label: 'My Inquiries', icon: MessageSquare },
   { href: '/student/faq', label: 'Support', icon: HelpCircle },
   { href: '/student/announcements', label: 'Announcements', icon: Bell },
