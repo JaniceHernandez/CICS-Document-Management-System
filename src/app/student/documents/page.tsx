@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -17,7 +16,9 @@ import {
   ShieldCheck,
   Info,
   ArrowUpDown,
-  Ghost
+  Ghost,
+  Plus,
+  Upload
 } from 'lucide-react';
 import { 
   Select, 
@@ -39,6 +40,7 @@ import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebas
 import { collection, doc, getDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
+import { SubmitDocumentDialog } from '@/components/student/submit-document-dialog';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
@@ -46,11 +48,10 @@ export default function StudentDocuments() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedProgram, setSelectedProgram] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [hasDefaultedProgram, setHasDefaultedProgram] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,17 +69,11 @@ export default function StudentDocuments() {
         if (!userData?.programIds || userData.programIds.length === 0) {
           router.push('/student/onboarding');
           return;
-        } 
-        
-        // Default to student's program on first load
-        if (!hasDefaultedProgram && userData.programIds.length > 0) {
-          setSelectedProgram(userData.programIds[0]);
-          setHasDefaultedProgram(true);
         }
       }
     }
     checkOnboarding();
-  }, [user, isUserLoading, firestore, router, hasDefaultedProgram]);
+  }, [user, isUserLoading, firestore, router]);
 
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
@@ -88,10 +83,17 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
+  // Filtering Logic: Only show documents for the student's program(s) OR "All Programs" (programIds is empty)
   const filteredDocs = documents?.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
-    const matchesProgram = selectedProgram === 'all' || doc.programIds?.includes(selectedProgram);
+    
+    // Check if document is Global or matches the student's program(s)
+    const isGlobal = !doc.programIds || doc.programIds.length === 0;
+    const isForStudentProgram = userProfile?.programIds?.some((pid: string) => doc.programIds?.includes(pid));
+    
+    const matchesProgram = isGlobal || isForStudentProgram;
+
     return matchesSearch && matchesCategory && matchesProgram;
   });
 
@@ -148,6 +150,10 @@ export default function StudentDocuments() {
     );
   }
 
+  const studentProgramCode = userProfile?.programIds?.length > 0 
+    ? programs?.find(p => p.id === userProfile.programIds[0])?.shortCode 
+    : 'All Programs';
+
   return (
     <div className="flex min-h-screen bg-background">
       <SidebarNav role="student" />
@@ -157,14 +163,21 @@ export default function StudentDocuments() {
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-headline font-bold text-primary">Library</h1>
-              <p className="text-muted-foreground">Search and access official institutional resources.</p>
+              <p className="text-muted-foreground">Access institutional resources for {studentProgramCode}.</p>
             </div>
             <div className="flex gap-4 items-center">
+              <Button 
+                onClick={() => setIsSubmitDialogOpen(true)}
+                className="bg-primary text-white rounded-full h-11 px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Submit Resource
+              </Button>
               {userProfile?.programIds?.length > 0 && (
                 <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-bold text-primary">
-                    {programs?.find(p => p.id === userProfile.programIds[0])?.shortCode} Portal
+                  <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                    {studentProgramCode} Portal
                   </span>
                 </div>
               )}
@@ -173,7 +186,7 @@ export default function StudentDocuments() {
 
           <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input 
@@ -191,17 +204,6 @@ export default function StudentDocuments() {
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories?.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
-                    <SelectValue placeholder="All Programs" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Programs</SelectItem>
-                    {programs?.map(prog => (
-                      <SelectItem key={prog.id} value={prog.id}>{prog.shortCode}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -236,6 +238,9 @@ export default function StudentDocuments() {
                       <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
                         {getCategoryName(docData.categoryId)}
                       </Badge>
+                      {docData.uploaderId === user?.uid && (
+                        <Badge variant="outline" className="border-secondary text-primary font-bold text-[9px]">YOUR SUBMISSION</Badge>
+                      )}
                     </div>
                     <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
                       {docData.title}
@@ -280,14 +285,13 @@ export default function StudentDocuments() {
               </div>
               <h3 className="text-xl font-bold text-zinc-900">No resources found</h3>
               <p className="text-muted-foreground max-w-sm mt-2">
-                We couldn't find any documents matching your current filters. Try adjusting your search or category selection.
+                There are currently no documents matching your program ({studentProgramCode}) or search criteria.
               </p>
               <Button 
                 variant="link" 
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
-                  setSelectedProgram('all');
                 }}
                 className="mt-4 text-primary font-bold"
               >
@@ -297,6 +301,11 @@ export default function StudentDocuments() {
           )}
         </div>
       </main>
+
+      <SubmitDocumentDialog 
+        open={isSubmitDialogOpen} 
+        onOpenChange={setIsSubmitDialogOpen} 
+      />
 
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">

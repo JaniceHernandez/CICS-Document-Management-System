@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -14,6 +13,7 @@ import {
   Edit, 
   ExternalLink,
   Loader2,
+  User
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -52,10 +52,12 @@ export default function DocumentManagement() {
   const documentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+  const usersQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'users') : null, [firestore, user]);
 
   const { data: documents, isLoading: docsLoading } = useCollection(documentsQuery);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
+  const { data: users } = useCollection(usersQuery);
 
   const filteredDocs = documents?.filter(doc => 
     doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -87,6 +89,12 @@ export default function DocumentManagement() {
 
   const getCategoryName = (catId: string) => {
     return categories?.find(c => c.id === catId)?.name || 'Uncategorized';
+  };
+
+  const getUploaderName = (uid: string) => {
+    const found = users?.find(u => u.id === uid);
+    if (!found) return 'System';
+    return found.fullName || found.email;
   };
 
   const totalSize = documents?.reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
@@ -144,80 +152,78 @@ export default function DocumentManagement() {
                       <TableRow className="border-none">
                         <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Resource Info</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Access</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Uploader</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Modified</TableHead>
                         <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDocs?.map((doc) => (
-                        <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
-                          <TableCell className="px-8 py-5">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                                <FileText className="h-6 w-6" />
+                      {filteredDocs?.map((doc) => {
+                        const isStudentSubmission = users?.find(u => u.id === doc.uploaderId)?.role === 'Student';
+                        return (
+                          <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
+                            <TableCell className="px-8 py-5">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                                  <FileText className="h-6 w-6" />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-zinc-900 leading-tight">{doc.title}</p>
+                                  <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">{(doc.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-bold text-zinc-900 leading-tight">{doc.title}</p>
-                                <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">{(doc.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
+                                {getCategoryName(doc.categoryId)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-zinc-700">{getUploaderName(doc.uploaderId)}</span>
+                                {isStudentSubmission && (
+                                  <Badge variant="outline" className="w-fit text-[8px] h-4 mt-1 border-secondary text-primary font-bold">STUDENT SUBMISSION</Badge>
+                                )}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
-                              {getCategoryName(doc.categoryId)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                              {doc.programIds?.length > 0 ? (
-                                doc.programIds.map((pid: string) => (
-                                  <Badge key={pid} variant="outline" className="border-primary/20 text-primary text-[9px] font-bold px-2">
-                                    {programs?.find(p => p.id === pid)?.shortCode}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <Badge variant="outline" className="border-zinc-200 text-zinc-400 text-[9px] font-bold px-2">PUBLIC</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-[11px] text-zinc-500 font-bold uppercase">
-                              {new Date(doc.updatedAt || doc.uploadDate).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right px-8">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 h-10 w-10">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Manage Resource</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium"
-                                  onClick={() => { setEditingDoc(doc); setIsDialogOpen(true); }}
-                                >
-                                  <Edit className="h-4 w-4 mr-3" /> Edit Metadata
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
-                                  <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="h-4 w-4 mr-3" /> Open File
-                                  </a>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-2 bg-zinc-50" />
-                                <DropdownMenuItem 
-                                  className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
-                                  onClick={() => handleDelete(doc)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-3" /> Delete Permanently
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-[11px] text-zinc-500 font-bold uppercase">
+                                {new Date(doc.updatedAt || doc.uploadDate).toLocaleDateString()}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right px-8">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 h-10 w-10">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
+                                  <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Manage Resource</DropdownMenuLabel>
+                                  <DropdownMenuItem 
+                                    className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium"
+                                    onClick={() => { setEditingDoc(doc); setIsDialogOpen(true); }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-3" /> Edit Metadata
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
+                                    <a href={`/api/blob?url=${encodeURIComponent(doc.fileUrl)}`} target="_blank" rel="noopener noreferrer">
+                                      <ExternalLink className="h-4 w-4 mr-3" /> Open File
+                                    </a>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator className="my-2 bg-zinc-50" />
+                                  <DropdownMenuItem 
+                                    className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
+                                    onClick={() => handleDelete(doc)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-3" /> Delete Permanently
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
