@@ -35,7 +35,7 @@ const FAQS = [
     a: "Official curriculum checklists are located in the 'Institutional Library' section. You can use the 'Category' filter to select 'Checklists' or 'Curriculum' to find the document relevant to your year and program."
   },
   { 
-    q: "How do I submit my capstone or research documentation for review?", 
+    q: "How do I submit documentation for review?", 
     a: "Navigate to the 'My Submissions' tab and click on 'New Submission'. Ensure you upload a PDF file and provide a clear description. These submissions are private and only visible to you and the CICS administrators."
   },
   { 
@@ -150,8 +150,8 @@ export default function StudentSupport() {
                     <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-2">
                       <Mail className="h-6 w-6 text-blue-600" />
                     </div>
-                    <p className="font-bold text-primary">Institutional Email</p>
-                    <p className="text-sm text-muted-foreground font-medium">cics@neu.edu.ph</p>
+                    <p className="font-bold text-primary">College Institutional Email</p>
+                    <p className="text-sm text-muted-foreground font-medium">computerstudies@neu.edu.ph</p>
                   </Card>
                   <Card className="border-none shadow-sm rounded-3xl bg-white p-8 text-center space-y-3 transition-transform hover:scale-105">
                     <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-2">
@@ -165,7 +165,7 @@ export default function StudentSupport() {
                       <MapPin className="h-6 w-6 text-green-600" />
                     </div>
                     <p className="font-bold text-primary">Campus Office</p>
-                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">CICS Building, 2nd Floor, NEU Main Campus</p>
+                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">Main Building, 4th Floor(Room M415), NEU Main Campus</p>
                   </Card>
                 </div>
               </section>
