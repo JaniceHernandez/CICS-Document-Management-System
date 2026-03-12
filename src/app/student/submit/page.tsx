@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,10 +40,10 @@ import {
   Loader2, 
   Plus,
   FileText, 
-  ShieldCheck, 
   Trash2,
   Edit,
-  ExternalLink
+  ExternalLink,
+  History
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -78,11 +78,11 @@ export default function StudentSubmitPage() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: submissions, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
 
-  const handleEdit = (doc: any) => {
-    setEditingDoc(doc);
-    setEditTitle(doc.title);
-    setEditDesc(doc.description);
-    setEditCatId(doc.categoryId);
+  const handleEdit = (docData: any) => {
+    setEditingDoc(docData);
+    setEditTitle(docData.title);
+    setEditDesc(docData.description || '');
+    setEditCatId(docData.categoryId);
   };
 
   const saveEdit = () => {
@@ -100,16 +100,16 @@ export default function StudentSubmitPage() {
 
   const handleDelete = async (docData: any) => {
     if (!firestore || !user) return;
-    if (confirm(`Are you sure you want to delete "${docData.title}"?`)) {
+    if (confirm(`Are you sure you want to remove "${docData.title}" from institutional records?`)) {
       try {
         await deleteDoc(doc(firestore, 'documents', docData.id));
         if (docData.fileUrl) {
           await deleteFromBlob(docData.fileUrl);
         }
-        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted personal submission: ${docData.title}`, docData.id);
+        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted institutional submission: ${docData.title}`, docData.id);
         toast({ title: "Submission Removed" });
       } catch (e: any) {
-        toast({ variant: "destructive", title: "Error", description: e.message });
+        toast({ variant: "destructive", title: "Action Failed", description: e.message });
       }
     }
   };
@@ -130,65 +130,70 @@ export default function StudentSubmitPage() {
         <div className="max-w-5xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Institutional Submissions</h1>
-              <p className="text-muted-foreground text-lg">Manage your contributed academic resources.</p>
+              <h1 className="text-3xl font-headline font-bold text-primary tracking-tight uppercase">My Submissions</h1>
+              <p className="text-muted-foreground text-lg">Contribute academic resources to the CICS library.</p>
             </div>
             <Button 
               onClick={() => setIsSubmitDialogOpen(true)}
               className="bg-primary text-white hover:bg-primary/90 rounded-full h-12 px-8 font-bold shadow-xl shadow-primary/20 transition-all hover:scale-105"
             >
               <Plus className="h-5 w-5 mr-2" />
-              Add Submission
+              New Submission
             </Button>
           </header>
 
           <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-headline font-bold text-primary">Monitoring My Uploads</h2>
-              <Badge variant="outline" className="border-primary/20 text-primary font-bold">
-                {submissions?.length || 0} TOTAL SUBMISSIONS
-              </Badge>
+            <div className="flex items-center gap-2 text-primary">
+              <History className="h-5 w-5" />
+              <h2 className="text-xl font-headline font-bold">Submission History</h2>
             </div>
             
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
               <Table>
                 <TableHeader className="bg-zinc-50/50">
                   <TableRow className="border-none">
-                    <TableHead className="font-bold px-8 py-5 text-[10px] uppercase tracking-widest">Document Title</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Submitted</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
-                    <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Actions</TableHead>
+                    <TableHead className="font-bold px-8 py-5 text-[10px] uppercase tracking-widest">Document Details</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Submission Date</TableHead>
+                    <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {submissionsLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-32 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      <TableCell colSpan={4} className="h-40 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary/40" />
+                        <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Fetching records...</p>
                       </TableCell>
                     </TableRow>
                   ) : submissions?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-32 text-center text-muted-foreground font-medium">
-                        You haven't submitted any documents yet.
+                      <TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                        No submissions recorded. Contribute your first resource today.
                       </TableCell>
                     </TableRow>
                   ) : (
                     submissions?.sort((a,b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()).map((sub) => (
                       <TableRow key={sub.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
-                        <TableCell className="px-8 py-4">
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-5 w-5 text-primary/40" />
-                            <span className="font-bold text-zinc-800">{sub.title}</span>
+                        <TableCell className="px-8 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary/40">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-zinc-800 leading-tight">{sub.title}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{(sub.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs font-medium text-zinc-500">
-                          {new Date(sub.uploadDate).toLocaleDateString()}
-                        </TableCell>
                         <TableCell>
-                          <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] font-bold uppercase tracking-widest px-3">
-                            IN REVIEW
+                          <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold text-[9px] px-2 py-0.5">
+                            {categories?.find(c => c.id === sub.categoryId)?.name || 'General'}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-zinc-500">
+                          {new Date(sub.uploadDate).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right px-8">
                           <div className="flex items-center justify-end gap-2">
@@ -237,22 +242,22 @@ export default function StudentSubmitPage() {
         <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
           <DialogContent className="max-w-xl rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">
-              <DialogTitle className="text-2xl font-bold font-headline">Modify Submission</DialogTitle>
-              <DialogDescription className="text-white/70">Update metadata for your institutional resource.</DialogDescription>
+              <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Update Submission</DialogTitle>
+              <DialogDescription className="text-white/70">Modify institutional metadata for your resource.</DialogDescription>
             </DialogHeader>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Resource Title</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Resource Title</Label>
                 <Input 
                   value={editTitle} 
                   onChange={(e) => setEditTitle(e.target.value)} 
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl focus-visible:ring-primary shadow-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Category</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Classification</Label>
                 <Select value={editCatId} onValueChange={setEditCatId}>
-                  <SelectTrigger className="h-12 rounded-xl">
+                  <SelectTrigger className="h-12 rounded-xl shadow-sm">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -263,16 +268,17 @@ export default function StudentSubmitPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Description</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Institutional Notes</Label>
                 <Textarea 
                   value={editDesc} 
                   onChange={(e) => setEditDesc(e.target.value)} 
-                  className="min-h-[120px] rounded-xl"
+                  placeholder="Provide a brief description..."
+                  className="min-h-[120px] rounded-xl resize-none shadow-sm"
                 />
               </div>
             </div>
-            <DialogFooter className="p-8 bg-zinc-50 border-t">
-              <Button variant="ghost" onClick={() => setEditingDoc(null)} className="rounded-xl px-6 font-bold">Cancel</Button>
+            <DialogFooter className="p-8 bg-zinc-50 border-t flex items-center justify-between">
+              <Button variant="ghost" onClick={() => setEditingDoc(null)} className="rounded-xl px-6 font-bold text-zinc-500">Cancel</Button>
               <Button onClick={saveEdit} className="bg-primary text-white rounded-xl px-8 font-bold shadow-lg shadow-primary/20">Save Changes</Button>
             </DialogFooter>
           </DialogContent>

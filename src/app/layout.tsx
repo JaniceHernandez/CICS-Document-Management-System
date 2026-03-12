@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'COLLEGE OF INFORMATICS AND COMPUTING STUDIES DOCUMENT MANAGEMENT SYSTEM',
-  description: 'Document Management System for CICS',
+  description: 'Official Document Management System for CICS',
 };
 
 export default function RootLayout({

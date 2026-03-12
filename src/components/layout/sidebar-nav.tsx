@@ -65,7 +65,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
           <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center shadow-lg shadow-secondary/20">
             <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
-          <span className="text-xl font-headline font-bold tracking-tight">CICS Hub</span>
+          <span className="text-sm font-headline font-bold tracking-tight leading-tight uppercase">
+            CICS DMS
+          </span>
         </div>
 
         <nav className="space-y-1.5">
@@ -93,7 +95,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
 
       <div className="mt-auto p-6 space-y-4">
         <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Signed In</p>
+          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1">Institutional Profile</p>
           <p className="text-sm font-bold truncate">
             {role === 'admin' ? 'Administrator' : user?.email?.split('@')[0] || 'Student'}
           </p>
