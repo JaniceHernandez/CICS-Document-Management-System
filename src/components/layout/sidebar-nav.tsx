@@ -14,7 +14,8 @@ import {
   MessageSquare,
   ShieldCheck,
   BarChart3,
-  Upload
+  Upload,
+  Inbox
 } from 'lucide-react';
 import { useFirebase, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -26,6 +27,7 @@ interface SidebarNavProps {
 const adminLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
   { href: '/admin/documents', label: 'Documents', icon: FileText },
+  { href: '/admin/submissions', label: 'Submissions', icon: Inbox },
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/students', label: 'Students', icon: Users },
   { href: '/admin/inquiries', label: 'Inquiries', icon: MessageSquare },

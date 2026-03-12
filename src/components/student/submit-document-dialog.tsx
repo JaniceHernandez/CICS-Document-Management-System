@@ -81,7 +81,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
   }, [toast]);
 
   const handleSubmit = async () => {
-    if (!firestore || !user || !file) return;
+    if (!firestore || !user || !file || !categoryId) return;
     setLoading(true);
 
     try {
@@ -139,10 +139,10 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
             <div className="p-2 bg-white/10 rounded-xl">
               <Upload className="h-6 w-6 text-secondary" />
             </div>
-            <DialogTitle className="text-3xl font-headline font-bold">Submit Document</DialogTitle>
+            <DialogTitle className="text-3xl font-headline font-bold">New Submission</DialogTitle>
           </div>
           <DialogDescription className="text-white/70 text-base">
-            Share a resource or submit a requirement to the CICS administrators.
+            Contribute a resource to the institutional library.
           </DialogDescription>
         </DialogHeader>
 
@@ -162,14 +162,14 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
             >
               <input 
                 type="file" 
-                id="student-file-upload" 
+                id="student-file-upload-dialog" 
                 className="hidden" 
                 accept=".pdf"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
               <div className="flex flex-col items-center space-y-3">
                 {file ? (
-                  <div className="bg-green-500 p-3 rounded-xl text-white">
+                  <div className="bg-green-500 p-3 rounded-xl text-white shadow-lg shadow-green-500/20">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                 ) : (
@@ -180,10 +180,10 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                 
                 <div>
                   <p className="font-bold text-lg text-zinc-900">
-                    {file ? file.name : 'Choose a file'}
+                    {file ? file.name : 'Select a PDF file'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drag and drop or click to browse PDF'}
+                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drag and drop or click to browse'}
                   </p>
                 </div>
 
@@ -191,9 +191,9 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                   <Button 
                     variant="outline" 
                     className="rounded-full px-6 h-9 text-xs border-zinc-200"
-                    onClick={() => document.getElementById('student-file-upload')?.click()}
+                    onClick={() => document.getElementById('student-file-upload-dialog')?.click()}
                   >
-                    Select File
+                    Browse Files
                   </Button>
                 )}
               </div>
@@ -207,15 +207,15 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                 id="title" 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
-                placeholder="e.g. Project Proposal - Group 1"
-                className="h-11 rounded-xl bg-white border-zinc-200"
+                placeholder="Institutional title..."
+                className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Category</Label>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Classification</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className="h-11 rounded-xl bg-white border-zinc-200">
+                <SelectTrigger className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -233,7 +233,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Briefly describe the document contents..."
-                className="min-h-[100px] rounded-xl bg-white border-zinc-200 resize-none"
+                className="min-h-[100px] rounded-xl bg-white border-zinc-200 shadow-sm resize-none"
               />
             </div>
           </div>
@@ -241,22 +241,22 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
           <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex gap-4">
             <AlertCircle className="h-6 w-6 text-blue-600 shrink-0" />
             <div className="space-y-1">
-              <p className="text-sm font-bold text-blue-900">Information</p>
+              <p className="text-sm font-bold text-blue-900">Review Process</p>
               <p className="text-xs text-blue-700 leading-relaxed">
-                Admins will be notified of your submission. Once reviewed, it may be published to the general library or specific program portals.
+                Admins will review your contribution before it is published to the general library. Ensure all metadata is accurate.
               </p>
             </div>
           </div>
         </div>
 
         <DialogFooter className="p-8 bg-white border-t shrink-0 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-11 px-6 text-zinc-500">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-11 px-6 text-zinc-500 font-bold">
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={loading || !title || !file || !categoryId}
-            className="bg-primary text-white rounded-xl h-11 px-10 font-bold"
+            className="bg-primary text-white rounded-xl h-11 px-10 font-bold shadow-xl shadow-primary/20"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : 'Send to Admin'}
           </Button>
