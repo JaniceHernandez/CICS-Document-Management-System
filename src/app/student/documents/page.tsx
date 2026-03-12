@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -80,8 +79,14 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
-  // Filtering Logic: Only show documents for the student's program(s) OR "All Programs" (Global)
+  // Filtering Logic: 
+  // 1. Must NOT be from the 'student-submissions' folder
+  // 2. Only show documents for the student's program(s) OR "All Programs" (Global)
   const filteredDocs = documents?.filter(doc => {
+    // Segregation check: exclude student submissions
+    const isStudentSub = doc.fileUrl?.includes('student-submissions');
+    if (isStudentSub) return false;
+
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     
@@ -159,8 +164,8 @@ export default function StudentDocuments() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">Library</h1>
-              <p className="text-muted-foreground">Access institutional resources for {studentProgramCode}.</p>
+              <h1 className="text-3xl font-headline font-bold text-primary">Institutional Library</h1>
+              <p className="text-muted-foreground">Access official resources for {studentProgramCode}.</p>
             </div>
             <div className="flex gap-4 items-center">
               {userProfile?.programIds?.length > 0 && (
@@ -228,9 +233,6 @@ export default function StudentDocuments() {
                       <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
                         {getCategoryName(docData.categoryId)}
                       </Badge>
-                      {docData.uploaderId === user?.uid && (
-                        <Badge variant="outline" className="border-secondary text-primary font-bold text-[9px]">YOUR SUBMISSION</Badge>
-                      )}
                     </div>
                     <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
                       {docData.title}

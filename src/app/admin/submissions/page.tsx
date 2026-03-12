@@ -52,10 +52,9 @@ export default function AdminSubmissions() {
   const { data: users } = useCollection(usersQuery);
   const { data: categories } = useCollection(categoriesQuery);
 
-  // Filter for documents uploaded by Students
+  // Segregation: Only show documents from the 'student-submissions' folder
   const studentSubmissions = documents?.filter(doc => {
-    const uploader = users?.find(u => u.id === doc.uploaderId);
-    return uploader?.role === 'Student';
+    return doc.fileUrl?.includes('student-submissions');
   }) || [];
 
   const filteredSubmissions = studentSubmissions.filter(sub => 
@@ -102,8 +101,8 @@ export default function AdminSubmissions() {
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
             <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="font-headline font-bold text-xl">Inbox</CardTitle>
-                <CardDescription>{studentSubmissions.length} student-uploaded files</CardDescription>
+                <CardTitle className="font-headline font-bold text-xl">Submission Inbox</CardTitle>
+                <CardDescription>{studentSubmissions.length} student-uploaded files stored in public blob</CardDescription>
               </div>
               <div className="relative w-80">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

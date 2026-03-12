@@ -59,10 +59,13 @@ export default function DocumentManagement() {
   const { data: programs } = useCollection(programsQuery);
   const { data: users } = useCollection(usersQuery);
 
-  const filteredDocs = documents?.filter(doc => 
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    doc.fileName.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+  // Segregation: Only show institutional docs (cics-docs) in this tab
+  const filteredDocs = documents?.filter(doc => {
+    const isInstitutional = doc.fileUrl?.includes('cics-docs') || !doc.fileUrl?.includes('student-submissions');
+    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          doc.fileName.toLowerCase().includes(searchQuery.toLowerCase());
+    return isInstitutional && matchesSearch;
+  }).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
   const handleDelete = async (document: any) => {
     if (!firestore || !user) return;
@@ -97,9 +100,8 @@ export default function DocumentManagement() {
     return found.fullName || found.email;
   };
 
-  const totalSize = documents?.reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
+  const totalSize = documents?.filter(d => d.fileUrl?.includes('cics-docs')).reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
   const sizeInMB = (totalSize / (1024 * 1024)).toFixed(1);
-  const storagePercent = Math.min(100, (parseFloat(sizeInMB) / 500) * 100);
 
   return (
     <div className="flex min-h-screen bg-zinc-50/30">
@@ -109,8 +111,8 @@ export default function DocumentManagement() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="flex justify-between items-end">
             <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Documents</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage and host institutional resources.</p>
+              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Library</h1>
+              <p className="text-muted-foreground mt-1 text-lg">Manage and host curriculum resources.</p>
             </div>
             <Button 
               onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
@@ -125,8 +127,8 @@ export default function DocumentManagement() {
             <Card className="lg:col-span-3 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
               <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="font-headline font-bold text-xl">All Documents</CardTitle>
-                  <CardDescription>Managing {documents?.length || 0} active files</CardDescription>
+                  <CardTitle className="font-headline font-bold text-xl">Official Records</CardTitle>
+                  <CardDescription>Managing {filteredDocs?.length || 0} active institutional files</CardDescription>
                 </div>
                 <div className="flex gap-4">
                   <div className="relative w-72">
@@ -159,7 +161,6 @@ export default function DocumentManagement() {
                     </TableHeader>
                     <TableBody>
                       {filteredDocs?.map((doc) => {
-                        const isStudentSubmission = users?.find(u => u.id === doc.uploaderId)?.role === 'Student';
                         return (
                           <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
                             <TableCell className="px-8 py-5">
@@ -181,9 +182,6 @@ export default function DocumentManagement() {
                             <TableCell>
                               <div className="flex flex-col">
                                 <span className="text-xs font-bold text-zinc-700">{getUploaderName(doc.uploaderId)}</span>
-                                {isStudentSubmission && (
-                                  <Badge variant="outline" className="w-fit text-[8px] h-4 mt-1 border-secondary text-primary font-bold">STUDENT SUBMISSION</Badge>
-                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -233,32 +231,20 @@ export default function DocumentManagement() {
             <div className="space-y-8">
               <Card className="border-none shadow-sm rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-zinc-50">
-                  <CardTitle className="font-headline font-bold text-xl">Cloud Usage</CardTitle>
-                  <CardDescription>Storage quota monitoring</CardDescription>
+                  <CardTitle className="font-headline font-bold text-xl">Library Usage</CardTitle>
+                  <CardDescription>Institutional asset monitoring</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                   <div className="space-y-3">
                     <div className="flex justify-between items-end">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data Hosted</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Library Data</span>
                       <span className="text-xl font-bold text-primary tabular-nums">{sizeInMB} MB</span>
-                    </div>
-                    <div className="h-3 bg-zinc-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-secondary transition-all duration-1000 ease-out" 
-                        style={{ width: `${storagePercent}%` }} 
-                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-zinc-50 rounded-2xl">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Total Assets</p>
-                      <p className="text-2xl font-bold text-primary">{documents?.length || 0}</p>
-                    </div>
-                    <div className="p-4 bg-zinc-50 rounded-2xl">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Avg Weight</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {documents?.length ? (totalSize / documents.length / 1024 / 1024).toFixed(1) : 0} <span className="text-[10px]">MB</span>
-                      </p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Institutional Assets</p>
+                      <p className="text-2xl font-bold text-primary">{filteredDocs?.length || 0}</p>
                     </div>
                   </div>
                 </CardContent>

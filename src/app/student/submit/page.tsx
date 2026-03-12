@@ -243,7 +243,7 @@ export default function StudentSubmitPage() {
           <DialogContent className="max-w-xl rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">
               <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Update Submission</DialogTitle>
-              <DialogDescription className="text-white/70">Modify institutional metadata for your resource.</DialogDescription>
+              <DialogDescription className="text-white/70">Modify metadata for your contribution.</DialogDescription>
             </DialogHeader>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
