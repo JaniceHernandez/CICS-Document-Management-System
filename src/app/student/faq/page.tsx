@@ -165,7 +165,7 @@ export default function StudentSupport() {
                       <MapPin className="h-6 w-6 text-green-600" />
                     </div>
                     <p className="font-bold text-primary">Campus Office</p>
-                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">Main Building, 4th Floor(Room M415), NEU Main Campus</p>
+                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">Main Building, 4th Floor (M415), NEU Main Campus</p>
                   </Card>
                 </div>
               </section>
