@@ -11,7 +11,8 @@ import {
   Search,
   CheckCircle2,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Inbox
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -64,14 +65,14 @@ export default function AdminSubmissions() {
 
   const handleDelete = async (document: any) => {
     if (!firestore || !adminUser) return;
-    if (confirm(`Delete student submission "${document.title}" permanently?`)) {
+    if (confirm(`Delete student requirement filing "${document.title}"? This will permanently remove the record.`)) {
       try {
         await deleteDoc(doc(firestore, 'documents', document.id));
         if (document.fileUrl) {
           await deleteFromBlob(document.fileUrl);
         }
-        logActivity(firestore, adminUser.uid, 'DOCUMENT_DELETE', `Admin deleted student submission: ${document.title}`, document.id);
-        toast({ title: "Submission Removed" });
+        logActivity(firestore, adminUser.uid, 'DOCUMENT_DELETE', `Admin removed student filing: ${document.title}`, document.id);
+        toast({ title: "Filing Removed" });
       } catch (e: any) {
         toast({ title: "Error", description: e.message, variant: "destructive" });
       }
@@ -84,7 +85,7 @@ export default function AdminSubmissions() {
   };
 
   const getCategoryName = (catId: string) => {
-    return categories?.find(c => c.id === catId)?.name || 'Uncategorized';
+    return categories?.find(c => c.id === catId)?.name || 'Requirement';
   };
 
   return (
@@ -94,20 +95,23 @@ export default function AdminSubmissions() {
       <main className="flex-1 ml-64 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <header>
-            <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Student Submissions</h1>
-            <p className="text-muted-foreground mt-1 text-lg">Review and manage resources contributed by the student body.</p>
+            <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Student Requirement Filings</h1>
+            <p className="text-muted-foreground mt-1 text-lg">Review and monitor official documents submitted by students for compliance.</p>
           </header>
 
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
             <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
               <div className="space-y-1">
-                <CardTitle className="font-headline font-bold text-xl">Submission Inbox</CardTitle>
-                <CardDescription>{studentSubmissions.length} student-uploaded files stored in public blob</CardDescription>
+                <CardTitle className="font-headline font-bold text-xl flex items-center gap-3">
+                  <Inbox className="h-6 w-6 text-primary" />
+                  Submission Inbox
+                </CardTitle>
+                <CardDescription>{studentSubmissions.length} active requirement filings pending review</CardDescription>
               </div>
               <div className="relative w-80">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search submissions or students..." 
+                  placeholder="Search filings or students..." 
                   className="pl-11 h-11 rounded-2xl bg-zinc-50 border-none focus-visible:ring-primary"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -118,24 +122,24 @@ export default function AdminSubmissions() {
               {docsLoading ? (
                 <div className="flex flex-col items-center justify-center py-32 space-y-4">
                   <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                  <p className="text-muted-foreground font-medium">Fetching contributions...</p>
+                  <p className="text-muted-foreground font-medium">Scanning filing system...</p>
                 </div>
               ) : filteredSubmissions.length === 0 ? (
                 <div className="text-center py-32">
                   <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-4">
                     <FileText className="h-8 w-8 text-zinc-300" />
                   </div>
-                  <p className="text-muted-foreground font-medium">No student submissions found matching your search.</p>
+                  <p className="text-muted-foreground font-medium">No requirement filings found matching your search.</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader className="bg-zinc-50/50">
                     <TableRow className="border-none">
-                      <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Resource</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Submitted By</TableHead>
+                      <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Filed Document</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Student</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date</TableHead>
-                      <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Filed</TableHead>
+                      <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -178,10 +182,10 @@ export default function AdminSubmissions() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                              <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Submission Actions</DropdownMenuLabel>
+                              <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Review Filing</DropdownMenuLabel>
                               <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
                                 <a href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4 mr-3" /> View Document
+                                  <ExternalLink className="h-4 w-4 mr-3" /> View Official Filing
                                 </a>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="my-2 bg-zinc-50" />
@@ -189,7 +193,7 @@ export default function AdminSubmissions() {
                                 className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
                                 onClick={() => handleDelete(sub)}
                               >
-                                <Trash2 className="h-4 w-4 mr-3" /> Remove Permanently
+                                <Trash2 className="h-4 w-4 mr-3" /> Deny & Remove Filing
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

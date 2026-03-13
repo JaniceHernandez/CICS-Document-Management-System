@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -31,24 +30,24 @@ import { useUser } from '@/firebase';
 
 const FAQS = [
   { 
-    q: "Where can I find the official BSIS, BSCS, or BSIT checklists?", 
-    a: "Official curriculum checklists are located in the 'Institutional Library' section. You can use the 'Category' filter to select 'Checklists' or 'Curriculum' to find the document relevant to your year and program."
+    q: "What is the difference between the Institutional Library and My Submissions?", 
+    a: "The Institutional Library contains official CICS resources provided by administrators (e.g., curriculum checklists, syllabi). 'My Submissions' is your personal portal for filing required university documents, such as capstone requirements or internship forms, for administrative review."
   },
   { 
-    q: "How do I submit documentation for review?", 
-    a: "Navigate to the 'My Submissions' tab and click on 'New Submission'. Ensure you upload a PDF file and provide a clear description. These submissions are private and only visible to you and the CICS administrators."
+    q: "How do I file a required document for institutional review?", 
+    a: "Navigate to the 'My Submissions' tab and click on 'New Submission'. Ensure you upload the correct PDF requirement and select the appropriate category. These filings are private and visible only to you and authorized CICS administrators."
   },
   { 
-    q: "Why can't I see documents from other departments?", 
-    a: "The Document Management System is strictly segregated by academic program. You will only see documents targeted at your specific program (e.g., BSCS) or global institutional documents intended for all CICS students."
+    q: "Why can't I see documents from other academic programs?", 
+    a: "The system is strictly segregated to ensure you only see resources relevant to your enrolled program (BSCS, BSIS, or BSIT). You will also see 'Global' documents that apply to all CICS students."
   },
   { 
-    q: "What should I do if my institutional account is not working?", 
-    a: "Access to this system requires an @neu.edu.ph Google account. If you are experiencing login issues, please contact the NEU IT Department or visit the CICS Registrar for account verification."
+    q: "Can other students see my filed requirements?", 
+    a: "No. All documents in the 'My Submissions' ledger are strictly isolated for privacy. Only you and the CICS administrative staff can access these filings."
   },
   { 
-    q: "Can other students see my uploaded submissions?", 
-    a: "No. The system is designed for privacy. Your contributions in the 'My Submissions' folder are strictly isolated and are only accessible by you and authorized CICS Administrators for review."
+    q: "What should I do if a requirement I filed was denied or removed?", 
+    a: "If an administrator removes a filing, it is typically due to incorrect information or missing data. You can re-submit the corrected document through the 'New Submission' portal. For specific feedback, contact the CICS office directly."
   },
 ];
 
@@ -56,7 +55,7 @@ export default function StudentSupport() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const [messages, setMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
-    { role: 'bot', text: 'Hello! I am the CICS Virtual Assistant. I can help you locate institutional documents, explain submission policies, or answer general university questions. How can I assist you today?' }
+    { role: 'bot', text: 'Hello! I am the CICS Virtual Assistant. I can help you find institutional resources, explain filing policies for required documents, or answer general university questions. How can I assist you today?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -108,7 +107,7 @@ export default function StudentSupport() {
         <div className="max-w-7xl mx-auto space-y-8">
           <header>
             <h1 className="text-3xl font-headline font-bold text-primary uppercase tracking-tight">Support & Institutional FAQ</h1>
-            <p className="text-muted-foreground text-lg">Official guidance and AI assistance for the CICS community.</p>
+            <p className="text-muted-foreground text-lg">Official guidance and AI assistance for student document filings.</p>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -150,22 +149,22 @@ export default function StudentSupport() {
                     <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-2">
                       <Mail className="h-6 w-6 text-blue-600" />
                     </div>
-                    <p className="font-bold text-primary">College Institutional Email</p>
+                    <p className="font-bold text-primary">Department Email</p>
                     <p className="text-sm text-muted-foreground font-medium">computerstudies@neu.edu.ph</p>
                   </Card>
                   <Card className="border-none shadow-sm rounded-3xl bg-white p-8 text-center space-y-3 transition-transform hover:scale-105">
                     <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-2">
                       <Phone className="h-6 w-6 text-amber-600" />
                     </div>
-                    <p className="font-bold text-primary">Administrative Hotline</p>
+                    <p className="font-bold text-primary">Hotline</p>
                     <p className="text-sm text-muted-foreground font-medium">(02) 8-123-4567</p>
                   </Card>
                   <Card className="border-none shadow-sm rounded-3xl bg-white p-8 text-center space-y-3 transition-transform hover:scale-105">
                     <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-2">
                       <MapPin className="h-6 w-6 text-green-600" />
                     </div>
-                    <p className="font-bold text-primary">Campus Office</p>
-                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">Main Building, 4th Floor (M415), NEU Main Campus</p>
+                    <p className="font-bold text-primary">CICS Office</p>
+                    <p className="text-sm text-muted-foreground font-medium line-clamp-2">Main Building, 4th Floor, NEU Main Campus</p>
                   </Card>
                 </div>
               </section>
@@ -183,7 +182,7 @@ export default function StudentSupport() {
                         <CardTitle className="text-xl font-headline font-bold">CICS Assistant</CardTitle>
                         <CardDescription className="text-white/70 flex items-center text-[10px] font-bold uppercase tracking-widest mt-1">
                           <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
-                          Knowledge Base Active
+                          Institutional Support Active
                         </CardDescription>
                       </div>
                     </div>
@@ -224,7 +223,7 @@ export default function StudentSupport() {
                           <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]" />
                           <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]" />
                         </div>
-                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Consulting Registry...</span>
+                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Reviewing Filing Rules...</span>
                       </div>
                     </div>
                   )}
@@ -233,7 +232,7 @@ export default function StudentSupport() {
                 <CardFooter className="p-6 bg-white border-t shrink-0">
                   <div className="flex w-full gap-3 relative">
                     <Input 
-                      placeholder="Ask about checklists or policies..." 
+                      placeholder="Ask about filings or library resources..." 
                       className="rounded-2xl h-14 pr-14 focus-visible:ring-primary border-zinc-200 bg-zinc-50/50"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}

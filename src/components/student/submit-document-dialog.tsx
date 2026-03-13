@@ -75,7 +75,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
       if (droppedFile.type === "application/pdf") {
         setFile(droppedFile);
       } else {
-        toast({ variant: "destructive", title: "Invalid File Type", description: "Only PDF documents are supported." });
+        toast({ variant: "destructive", title: "Invalid File Type", description: "Only PDF documents are supported for official filings." });
       }
     }
   }, [toast]);
@@ -104,18 +104,18 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
         uploadDate: now,
         uploaderId: user.uid,
         categoryId,
-        programIds: [], // Defaults to Global or Admin can re-assign
+        programIds: [], // Defaults to Global for admin review
         downloadCount: 0,
         createdAt: now,
         updatedAt: now,
       };
 
       setDocumentNonBlocking(doc(firestore, 'documents', docId), docData, { merge: true });
-      logActivity(firestore, user.uid, 'DOCUMENT_UPLOAD', `Student submitted resource: ${title}`, docId);
+      logActivity(firestore, user.uid, 'DOCUMENT_UPLOAD', `Student filed requirement: ${title}`, docId);
       
       toast({ 
-        title: "Submission Successful", 
-        description: "Your document has been sent to the administrators." 
+        title: "Requirement Filed", 
+        description: "Your document has been submitted for institutional review." 
       });
 
       resetForm();
@@ -123,8 +123,8 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
     } catch (error: any) {
       toast({ 
         variant: "destructive", 
-        title: "Submission Failed", 
-        description: error.message || "Failed to upload your document." 
+        title: "Filing Failed", 
+        description: error.message || "Failed to upload your document requirement." 
       });
     } finally {
       setLoading(false);
@@ -139,16 +139,16 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
             <div className="p-2 bg-white/10 rounded-xl">
               <Upload className="h-6 w-6 text-secondary" />
             </div>
-            <DialogTitle className="text-3xl font-headline font-bold">New Submission</DialogTitle>
+            <DialogTitle className="text-3xl font-headline font-bold">Requirement Submission</DialogTitle>
           </div>
           <DialogDescription className="text-white/70 text-base">
-            Contribute a resource to the institutional library.
+            Upload your required documents for institutional filing and review.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-zinc-50/50">
           <div className="space-y-3">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">PDF Attachment</Label>
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Official PDF Attachment</Label>
             <div 
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -180,10 +180,10 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                 
                 <div>
                   <p className="font-bold text-lg text-zinc-900">
-                    {file ? file.name : 'Select a PDF file'}
+                    {file ? file.name : 'Select requirement PDF'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drag and drop or click to browse'}
+                    {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drag and drop or click to browse files'}
                   </p>
                 </div>
 
@@ -193,7 +193,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                     className="rounded-full px-6 h-9 text-xs border-zinc-200"
                     onClick={() => document.getElementById('student-file-upload-dialog')?.click()}
                   >
-                    Browse Files
+                    Select Local File
                   </Button>
                 )}
               </div>
@@ -207,16 +207,16 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
                 id="title" 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
-                placeholder="Institutional title..."
+                placeholder="e.g. Capstone Phase 1 Documentation"
                 className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Classification</Label>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Filing Category</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm">
-                  <SelectValue placeholder="Select Category" />
+                  <SelectValue placeholder="Select Requirement Type" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   {categories?.map((cat) => (
@@ -227,12 +227,12 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Short Description</Label>
+              <Label htmlFor="description" className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Filing Description</Label>
               <Textarea 
                 id="description" 
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Briefly describe the document contents..."
+                placeholder="Briefly explain the contents of this filing..."
                 className="min-h-[100px] rounded-xl bg-white border-zinc-200 shadow-sm resize-none"
               />
             </div>
@@ -241,9 +241,9 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
           <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex gap-4">
             <AlertCircle className="h-6 w-6 text-blue-600 shrink-0" />
             <div className="space-y-1">
-              <p className="text-sm font-bold text-blue-900">Review Process</p>
+              <p className="text-sm font-bold text-blue-900">Institutional Filing Process</p>
               <p className="text-xs text-blue-700 leading-relaxed">
-                Admins will review your contribution before it is published to the general library. Ensure all metadata is accurate.
+                Documents are securely stored and reviewed by CICS Administrators. This portal is for official filings and university requirements.
               </p>
             </div>
           </div>
@@ -258,7 +258,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
             disabled={loading || !title || !file || !categoryId}
             className="bg-primary text-white rounded-xl h-11 px-10 font-bold shadow-xl shadow-primary/20"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : 'Send to Admin'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : 'File Requirement'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -100,14 +100,14 @@ export default function StudentSubmitPage() {
 
   const handleDelete = async (docData: any) => {
     if (!firestore || !user) return;
-    if (confirm(`Are you sure you want to remove "${docData.title}" from institutional records?`)) {
+    if (confirm(`Are you sure you want to remove "${docData.title}"? This will withdraw the document from institutional review.`)) {
       try {
         await deleteDoc(doc(firestore, 'documents', docData.id));
         if (docData.fileUrl) {
           await deleteFromBlob(docData.fileUrl);
         }
-        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted institutional submission: ${docData.title}`, docData.id);
-        toast({ title: "Submission Removed" });
+        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Withdrew submission: ${docData.title}`, docData.id);
+        toast({ title: "Submission Withdrawn" });
       } catch (e: any) {
         toast({ variant: "destructive", title: "Action Failed", description: e.message });
       }
@@ -131,7 +131,7 @@ export default function StudentSubmitPage() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-3xl font-headline font-bold text-primary tracking-tight uppercase">My Submissions</h1>
-              <p className="text-muted-foreground text-lg">Contribute academic resources to the CICS library.</p>
+              <p className="text-muted-foreground text-lg">Upload and monitor your required institutional documents.</p>
             </div>
             <Button 
               onClick={() => setIsSubmitDialogOpen(true)}
@@ -145,7 +145,7 @@ export default function StudentSubmitPage() {
           <section className="space-y-6">
             <div className="flex items-center gap-2 text-primary">
               <History className="h-5 w-5" />
-              <h2 className="text-xl font-headline font-bold">Submission History</h2>
+              <h2 className="text-xl font-headline font-bold">Submission Filing History</h2>
             </div>
             
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
@@ -154,8 +154,8 @@ export default function StudentSubmitPage() {
                   <TableRow className="border-none">
                     <TableHead className="font-bold px-8 py-5 text-[10px] uppercase tracking-widest">Document Details</TableHead>
                     <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Submission Date</TableHead>
-                    <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Filed</TableHead>
+                    <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -163,14 +163,14 @@ export default function StudentSubmitPage() {
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary/40" />
-                        <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Fetching records...</p>
+                        <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Syncing records...</p>
                       </TableCell>
                     </TableRow>
                   ) : submissions?.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                        No submissions recorded. Contribute your first resource today.
+                        No documents filed yet. Submit your requirements here.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -189,7 +189,7 @@ export default function StudentSubmitPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold text-[9px] px-2 py-0.5">
-                            {categories?.find(c => c.id === sub.categoryId)?.name || 'General'}
+                            {categories?.find(c => c.id === sub.categoryId)?.name || 'General Requirement'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs font-bold text-zinc-500">
@@ -201,6 +201,7 @@ export default function StudentSubmitPage() {
                               variant="ghost" 
                               size="icon" 
                               className="rounded-xl h-9 w-9 text-zinc-400 hover:text-primary hover:bg-primary/5"
+                              title="Edit Details"
                               onClick={() => handleEdit(sub)}
                             >
                               <Edit className="h-4 w-4" />
@@ -209,6 +210,7 @@ export default function StudentSubmitPage() {
                               variant="ghost" 
                               size="icon" 
                               className="rounded-xl h-9 w-9 text-zinc-400 hover:text-destructive hover:bg-destructive/5"
+                              title="Withdraw Submission"
                               onClick={() => handleDelete(sub)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -218,6 +220,7 @@ export default function StudentSubmitPage() {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5"
+                              title="Preview File"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </a>
@@ -242,12 +245,12 @@ export default function StudentSubmitPage() {
         <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
           <DialogContent className="max-w-xl rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">
-              <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Update Submission</DialogTitle>
-              <DialogDescription className="text-white/70">Modify metadata for your contribution.</DialogDescription>
+              <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Update Filing Details</DialogTitle>
+              <DialogDescription className="text-white/70">Modify metadata for your submitted requirement.</DialogDescription>
             </DialogHeader>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Resource Title</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Document Title</Label>
                 <Input 
                   value={editTitle} 
                   onChange={(e) => setEditTitle(e.target.value)} 
@@ -255,7 +258,7 @@ export default function StudentSubmitPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Classification</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Requirement Category</Label>
                 <Select value={editCatId} onValueChange={setEditCatId}>
                   <SelectTrigger className="h-12 rounded-xl shadow-sm">
                     <SelectValue placeholder="Select Category" />
@@ -268,11 +271,11 @@ export default function StudentSubmitPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Institutional Notes</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Submission Notes</Label>
                 <Textarea 
                   value={editDesc} 
                   onChange={(e) => setEditDesc(e.target.value)} 
-                  placeholder="Provide a brief description..."
+                  placeholder="Provide any context for the administrator..."
                   className="min-h-[120px] rounded-xl resize-none shadow-sm"
                 />
               </div>
