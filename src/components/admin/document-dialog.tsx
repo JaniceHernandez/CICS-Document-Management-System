@@ -218,8 +218,8 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
                   </div>
                 )}
                 
-                <div>
-                  <p className="font-bold text-xl text-zinc-900">
+                <div className="max-w-xs mx-auto px-4">
+                  <p className="font-bold text-xl text-zinc-900 truncate">
                     {file ? file.name : editDoc ? 'Swap PDF Document' : 'Drop PDF Document'}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -287,12 +287,12 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
                 {selectedPrograms.length || 'ALL'} SELECTED
               </Badge>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
               {programs?.map((prog) => (
                 <div 
                   key={prog.id} 
                   className={cn(
-                    "flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer",
+                    "flex items-start space-x-3 p-4 rounded-2xl border transition-all cursor-pointer",
                     selectedPrograms.includes(prog.id) 
                       ? "bg-primary/5 border-primary shadow-sm" 
                       : "bg-zinc-50 border-transparent hover:border-zinc-200"
@@ -303,11 +303,11 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
                     id={prog.id} 
                     checked={selectedPrograms.includes(prog.id)}
                     onCheckedChange={() => handleProgramToggle(prog.id)}
-                    className="h-5 w-5 rounded-md"
+                    className="h-5 w-5 rounded-md mt-0.5"
                   />
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-primary">{prog.shortCode}</p>
-                    <p className="text-[10px] text-muted-foreground truncate uppercase">{prog.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-primary leading-tight">{prog.shortCode}</p>
+                    <p className="text-[10px] text-muted-foreground truncate uppercase mt-0.5">{prog.name}</p>
                   </div>
                 </div>
               ))}

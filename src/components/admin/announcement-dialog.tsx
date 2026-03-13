@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -151,12 +152,12 @@ export function AnnouncementDialog({ open, onOpenChange, announcement: editAnn }
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Target Academic Programs</Label>
               <span className="text-[10px] font-bold text-primary uppercase">Default: Global (All Students)</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
               {programs?.map((prog) => (
                 <div 
                   key={prog.id} 
                   className={cn(
-                    "flex items-center space-x-4 p-4 rounded-2xl border transition-all cursor-pointer",
+                    "flex items-start space-x-4 p-4 rounded-2xl border transition-all cursor-pointer",
                     selectedPrograms.includes(prog.id) 
                       ? "bg-primary/5 border-primary shadow-sm" 
                       : "bg-zinc-50 border-transparent hover:border-zinc-200"
@@ -167,11 +168,11 @@ export function AnnouncementDialog({ open, onOpenChange, announcement: editAnn }
                     id={prog.id} 
                     checked={selectedPrograms.includes(prog.id)}
                     onCheckedChange={() => handleProgramToggle(prog.id)}
-                    className="h-5 w-5 rounded-md"
+                    className="h-5 w-5 rounded-md mt-0.5"
                   />
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-primary">{prog.shortCode}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">{prog.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-primary leading-tight">{prog.shortCode}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase mt-0.5 truncate">{prog.name}</p>
                   </div>
                 </div>
               ))}
