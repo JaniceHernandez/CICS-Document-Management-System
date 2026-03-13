@@ -37,7 +37,7 @@ interface SubmitDocumentDialogProps {
 
 export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialogProps) {
   const firestore = useFirestore();
-  const { user } = userUser();
+  const { user } = useUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
