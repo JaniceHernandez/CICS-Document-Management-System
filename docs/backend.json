@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -95,6 +96,11 @@
           "type": "number",
           "description": "The size of the document file in bytes."
         },
+        "status": {
+          "type": "string",
+          "description": "The current status of the document filing (e.g., 'Pending Review', 'Acknowledged').",
+          "enum": ["Pending Review", "Acknowledged"]
+        },
         "uploadDate": {
           "type": "string",
           "description": "Timestamp when the document was uploaded.",
@@ -102,7 +108,7 @@
         },
         "uploaderId": {
           "type": "string",
-          "description": "Reference to the User (Admin) who uploaded the document. (Relationship: User 1:N Document)"
+          "description": "Reference to the User who uploaded the document. (Relationship: User 1:N Document)"
         },
         "categoryId": {
           "type": "string",
@@ -501,7 +507,7 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {
@@ -513,7 +519,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores core user profiles for both students and administrators. The `userId` directly corresponds to `request.auth.uid`. The `role` and `programIds` fields provide essential context for client-side logic and some rule checks. Includes denormalized 'programIds' for user affiliations."
+          "description": "Stores core user profiles for both students and administrators."
         }
       },
       {
@@ -523,7 +529,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "A dedicated top-level collection to signify administrator roles. The existence of a document at `/adminRoles/{adminId}` where `adminId` matches `request.auth.uid` is the sole determinant for admin privileges in security rules, adhering to the 'Existence over Content' DBAC principle for global roles. This collection will store minimal data, possibly just an 'id' field, for efficient rule checks."
+          "description": "Signifies administrator roles."
         }
       },
       {
@@ -533,13 +539,7 @@
           "schema": {
             "$ref": "#/backend/entities/Document"
           },
-          "description": "Contains all official PDF documents. Accessible by authenticated students for reading/listing (with client-side filtering by `programIds`, `categoryId`) and fully managed by administrators. Includes denormalized `uploaderId` and `programIds` for authorization independence and client-side filtering.",
-          "params": [
-            {
-              "name": "documentId",
-              "description": "The unique identifier for a specific document."
-            }
-          ]
+          "description": "Contains official PDF documents and student requirements."
         }
       },
       {
@@ -549,13 +549,7 @@
           "schema": {
             "$ref": "#/backend/entities/Category"
           },
-          "description": "Manages categories for organizing documents and FAQs. Readable by all authenticated users and fully managed by administrators.",
-          "params": [
-            {
-              "name": "categoryId",
-              "description": "The unique identifier for a specific document category."
-            }
-          ]
+          "description": "Document categories."
         }
       },
       {
@@ -565,13 +559,7 @@
           "schema": {
             "$ref": "#/backend/entities/Program"
           },
-          "description": "Stores information about academic programs offered by CICS. Readable by all authenticated users and fully managed by administrators.",
-          "params": [
-            {
-              "name": "programId",
-              "description": "The unique identifier for a specific academic program."
-            }
-          ]
+          "description": "Academic programs."
         }
       },
       {
@@ -581,13 +569,7 @@
           "schema": {
             "$ref": "#/backend/entities/Announcement"
           },
-          "description": "Stores announcements created by administrators. Accessible by all authenticated students (with client-side filtering by `targetProgramIds`) and fully managed by administrators. Includes denormalized `creatorId` and `targetProgramIds` for authorization independence and client-side filtering.",
-          "params": [
-            {
-              "name": "announcementId",
-              "description": "The unique identifier for a specific announcement."
-            }
-          ]
+          "description": "Institutional announcements."
         }
       },
       {
@@ -597,13 +579,7 @@
           "schema": {
             "$ref": "#/backend/entities/Inquiry"
           },
-          "description": "Manages student inquiries. Students can create, read, and update their own inquiries. Administrators can manage all inquiries (read, update, delete). Includes denormalized `studentId` and `adminId` for authorization independence.",
-          "params": [
-            {
-              "name": "inquiryId",
-              "description": "The unique identifier for a specific inquiry."
-            }
-          ]
+          "description": "Student support inquiries."
         }
       },
       {
@@ -613,13 +589,7 @@
           "schema": {
             "$ref": "#/backend/entities/FAQ"
           },
-          "description": "Contains frequently asked questions and their answers for student self-service. Readable by all authenticated students and fully managed by administrators.",
-          "params": [
-            {
-              "name": "faqId",
-              "description": "The unique identifier for a specific FAQ entry."
-            }
-          ]
+          "description": "Frequently asked questions."
         }
       },
       {
@@ -629,13 +599,7 @@
           "schema": {
             "$ref": "#/backend/entities/ActivityLog"
           },
-          "description": "Records various user and system activities for auditing and monitoring. Read-only for administrators; write-only for authenticated users (for their own actions) or system processes. Includes denormalized `userId`, `documentId`, and `affectedUserId` for authorization independence.",
-          "params": [
-            {
-              "name": "activityLogId",
-              "description": "The unique identifier for a specific activity log entry."
-            }
-          ]
+          "description": "System activity logs."
         }
       },
       {
@@ -645,16 +609,9 @@
           "schema": {
             "$ref": "#/backend/entities/InquiryPeriod"
           },
-          "description": "Configures periods during which students can submit inquiries. Readable by all authenticated students to check submission status and fully managed by administrators. Includes denormalized `adminId` for authorization independence.",
-          "params": [
-            {
-              "name": "inquiryPeriodId",
-              "description": "The unique identifier for a specific inquiry period."
-            }
-          ]
+          "description": "Configures inquiry submission periods."
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to be secure, scalable, and debuggable, adhering strictly to the provided core design principles and mandates. \n\n**Authorization Independence (CRITICAL) and Denormalization:**\nAuthorization independence is achieved by ensuring that all necessary authorization contexts are denormalized directly into the documents themselves or managed through top-level, self-contained collections. For instance:\n*   The `/users/{userId}` collection stores each user's profile, including their `programIds`. While the `role` field is present, the authoritative source for admin permissions, used in security rules, is the dedicated `/adminRoles/{adminId}` collection. This 'existence over content' approach for roles means rules can check `exists(/adminRoles/$(request.auth.uid))` without needing to `get()` the full user profile.\n*   Documents like `/documents/{documentId}`, `/announcements/{announcementId}`, and `/inquiries/{inquiryId}` explicitly contain fields such as `uploaderId`, `creatorId`, `studentId`, and `adminId`. This eliminates the need for `get()` calls in security rules to check ownership or direct associations, making rule evaluation atomic, robust, and easy to debug. Access decisions for a document can be made by inspecting the document itself and `request.auth.uid`.\n\n**QAPs (Rules are not Filters) and Structural Segregation:**\nThis design prioritizes secure `list` operations by implementing structural segregation and clear access patterns:\n*   **Structural Segregation:** Collections like `/adminRoles`, `/activityLogs`, `/documents`, `/announcements`, `/categories`, `/programs`, `/faqs`, and `/inquiryPeriods` are designed such that all documents within a given collection share a homogeneous security posture. For example, all documents in `/documents` are generally accessible to authenticated students, and all documents in `/activityLogs` are readable only by administrators. This simplifies security rules immensely, as there's no need for complex conditional logic within a single collection to differentiate access levels.\n*   **Client-Side Filtering for Broad Access:** For collections like `/documents` and `/announcements`, which contain `programIds` or `targetProgramIds` respectively, the rules allow `list` access for all authenticated students. The filtering based on a student's specific programs is expected to be handled on the client-side via Firestore queries (e.g., `where('programIds', 'array-contains-any', studentProgramIds)`). This strategy avoids complex `get()` calls in `list` rules to fetch a user's program affiliations, thus adhering to the QAP principle that "
+    ]
   }
 }

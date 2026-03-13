@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback } from 'react';
@@ -36,7 +37,7 @@ interface SubmitDocumentDialogProps {
 
 export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialogProps) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user } = userUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -101,6 +102,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
         fileUrl,
         fileName: file.name,
         fileSize: file.size,
+        status: 'Pending Review',
         uploadDate: now,
         uploaderId: user.uid,
         categoryId,

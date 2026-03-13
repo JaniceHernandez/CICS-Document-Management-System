@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -43,11 +44,14 @@ import {
   Trash2,
   Edit,
   ExternalLink,
-  History
+  History,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { SubmitDocumentDialog } from '@/components/student/submit-document-dialog';
+import { cn } from '@/lib/utils';
 
 export default function StudentSubmitPage() {
   const firestore = useFirestore();
@@ -153,7 +157,7 @@ export default function StudentSubmitPage() {
                 <TableHeader className="bg-zinc-50/50">
                   <TableRow className="border-none">
                     <TableHead className="font-bold px-8 py-5 text-[10px] uppercase tracking-widest">Document Details</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Filing Status</TableHead>
                     <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Filed</TableHead>
                     <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Manage</TableHead>
                   </TableRow>
@@ -183,13 +187,19 @@ export default function StudentSubmitPage() {
                             </div>
                             <div>
                               <p className="font-bold text-zinc-800 leading-tight">{sub.title}</p>
-                              <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{(sub.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
+                              <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                                {categories?.find(c => c.id === sub.categoryId)?.name || 'Requirement'} • {(sub.fileSize / 1024 / 1024).toFixed(2)} MB
+                              </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold text-[9px] px-2 py-0.5">
-                            {categories?.find(c => c.id === sub.categoryId)?.name || 'General Requirement'}
+                          <Badge variant="secondary" className={cn(
+                            "border-none font-bold text-[9px] px-2.5 py-1 uppercase tracking-wider flex items-center gap-1.5 w-fit",
+                            sub.status === 'Acknowledged' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                          )}>
+                            {sub.status === 'Acknowledged' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                            {sub.status || 'Pending Review'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs font-bold text-zinc-500">
@@ -203,6 +213,7 @@ export default function StudentSubmitPage() {
                               className="rounded-xl h-9 w-9 text-zinc-400 hover:text-primary hover:bg-primary/5"
                               title="Edit Details"
                               onClick={() => handleEdit(sub)}
+                              disabled={sub.status === 'Acknowledged'}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -212,6 +223,7 @@ export default function StudentSubmitPage() {
                               className="rounded-xl h-9 w-9 text-zinc-400 hover:text-destructive hover:bg-destructive/5"
                               title="Withdraw Submission"
                               onClick={() => handleDelete(sub)}
+                              disabled={sub.status === 'Acknowledged'}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

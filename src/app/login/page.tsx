@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Mail, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, Lock, ShieldCheck, GraduationCap, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
@@ -15,6 +16,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { logActivity } from '@/lib/activity-logging';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { cn } from '@/lib/utils';
 
 function LoginContent() {
   const router = useRouter();
@@ -191,83 +193,99 @@ function LoginContent() {
 
   if (!isUserLoading && user && !isAuthenticating) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
-          <p className="text-lg font-bold text-primary">Verifying institutional credentials...</p>
+          <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
+          <p className="text-xl font-headline font-bold text-primary animate-pulse">Establishing secure session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
-      <Link href="/" className="absolute top-8 left-8 flex items-center text-muted-foreground hover:text-primary transition-colors font-bold uppercase tracking-wider text-xs">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Hub
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Decoration */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-5">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#003366_1px,transparent_1px)] [background-size:24px_24px]" />
+      </div>
+
+      <Link href="/" className="absolute top-8 left-8 flex items-center text-zinc-500 hover:text-primary transition-all font-bold uppercase tracking-widest text-[10px] z-10 group">
+        <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
+          <ArrowLeft className="h-4 w-4" />
+        </div>
+        Return to Portal Hub
       </Link>
       
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <div className="mx-auto w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-6 shadow-2xl p-4 transition-transform hover:scale-105">
+      <div className="w-full max-w-lg space-y-10 relative z-10">
+        <div className="text-center space-y-6">
+          <div className="mx-auto w-28 h-28 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl p-5 border border-zinc-100 transition-all hover:rotate-3 hover:scale-105">
             {logoImage && (
               <Image 
                 src={logoImage.imageUrl} 
                 alt="NEU Logo" 
-                width={80} 
-                height={80} 
+                width={100} 
+                height={100} 
                 className="object-contain"
               />
             )}
           </div>
-          <h1 className="text-xl md:text-2xl font-headline font-bold text-primary tracking-tight uppercase leading-tight">
-            COLLEGE OF INFORMATICS AND COMPUTING STUDIES
-          </h1>
-          <p className="text-muted-foreground mt-2 font-bold uppercase tracking-[0.2em] text-xs">Document Management System</p>
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">
+              Institutional Access
+            </h1>
+            <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[10px]">CICS Document Management System</p>
+          </div>
         </div>
 
-        <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="space-y-2 pb-8 pt-10 text-center bg-zinc-50/50 border-b">
-            <CardTitle className="text-2xl font-headline font-bold text-primary">
-              {targetRole === 'admin' ? 'Administrator Portal' : 'Student Access'}
+        <Card className="border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[2.5rem] overflow-hidden bg-white">
+          <CardHeader className="space-y-2 p-10 pb-8 text-center bg-zinc-50/50 border-b relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1 bg-primary text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-xl">
+              Official Gateway
+            </div>
+            <CardTitle className="text-3xl font-headline font-bold text-primary flex items-center justify-center gap-3">
+              {targetRole === 'admin' ? (
+                <><ShieldCheck className="h-7 w-7 text-secondary" /> Administrative Portal</>
+              ) : (
+                <><GraduationCap className="h-7 w-7 text-secondary" /> Student Portal</>
+              )}
             </CardTitle>
-            <CardDescription className="text-sm font-medium">
+            <CardDescription className="text-base font-medium text-zinc-500">
               {targetRole === 'admin' 
-                ? 'Authorized CICS personnel only.' 
-                : 'Sign in with your @neu.edu.ph account.'}
+                ? 'Authorized CICS staff and faculty access only.' 
+                : 'Please use your NEU institutional credentials.'}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="px-10 py-10">
+          <CardContent className="p-10 space-y-8">
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Institutional Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="space-y-3">
+                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Staff Identifier</Label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
                       id="email"
                       type="email"
                       placeholder="admin@neu.edu.ph"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 rounded-xl bg-zinc-50 border-none focus-visible:ring-primary shadow-inner"
+                      className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
                       disabled={isAuthenticating}
                       required
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Security Key</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="space-y-3">
+                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Security Key</Label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
                       id="password"
                       type="password"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-12 rounded-xl bg-zinc-50 border-none focus-visible:ring-primary shadow-inner"
+                      className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
                       disabled={isAuthenticating}
                       required
                     />
@@ -275,38 +293,60 @@ function LoginContent() {
                 </div>
                 <Button 
                   type="submit"
-                  className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
+                  className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Portal'}
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Authenticate Credentials'}
                 </Button>
               </form>
             ) : (
-              <Button 
-                className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3" 
-                onClick={handleGoogleLogin}
-                disabled={isAuthenticating}
-              >
-                {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                  <>
-                    <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={20} height={20} />
-                    Institutional Sign In
-                  </>
-                )}
-              </Button>
+              <div className="space-y-6">
+                <Button 
+                  variant="outline"
+                  className="w-full h-16 rounded-[1.25rem] font-bold text-lg border-2 border-zinc-100 hover:bg-zinc-50 flex items-center justify-center gap-4 transition-all hover:scale-[1.02] active:scale-95" 
+                  onClick={handleGoogleLogin}
+                  disabled={isAuthenticating}
+                >
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                    <>
+                      <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} />
+                      Sign in with NEU Account
+                    </>
+                  )}
+                </Button>
+                <div className="flex items-center gap-4 py-2">
+                  <div className="h-px bg-zinc-100 flex-1" />
+                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Institutional Single Sign-On</span>
+                  <div className="h-px bg-zinc-100 flex-1" />
+                </div>
+                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-4">
+                  <Globe className="h-5 w-5 text-blue-600 shrink-0" />
+                  <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                    Access is restricted to active @neu.edu.ph domain accounts. Please ensure you are logged into your institutional Google profile.
+                  </p>
+                </div>
+              </div>
             )}
           </CardContent>
           
-          <CardFooter className="bg-zinc-50/50 p-6 flex justify-center border-t">
+          <CardFooter className="bg-zinc-50/50 p-8 flex justify-center border-t">
             <Link 
               href={`/login?role=${targetRole === 'admin' ? 'student' : 'admin'}`}
-              className="text-xs font-bold text-primary hover:underline uppercase tracking-widest"
+              className="text-[11px] font-bold text-primary hover:underline uppercase tracking-[0.2em] flex items-center gap-2 transition-all hover:gap-3"
               onClick={() => setIsAuthenticating(false)}
             >
-              {targetRole === 'admin' ? 'Switch to Student Access' : 'Switch to Admin Access'}
+              {targetRole === 'admin' ? (
+                <>Switch to Student Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
+              ) : (
+                <>Switch to Admin Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
+              )}
             </Link>
           </CardFooter>
         </Card>
+        
+        <p className="text-center text-zinc-400 text-[9px] font-bold uppercase tracking-widest pb-10">
+          © 2024 New Era University • College of Informatics and Computing Studies
+        </p>
       </div>
     </div>
   );
@@ -316,7 +356,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <Loader2 className="h-12 w-12 text-primary animate-spin" />
       </div>
     }>
       <LoginContent />

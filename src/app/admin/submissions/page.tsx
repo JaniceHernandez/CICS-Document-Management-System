@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -12,7 +13,9 @@ import {
   CheckCircle2,
   Trash2,
   MoreVertical,
-  Inbox
+  Inbox,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,10 +37,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { deleteFromBlob } from '@/app/actions/storage';
 import { logActivity } from '@/lib/activity-logging';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function AdminSubmissions() {
   const firestore = useFirestore();
@@ -62,6 +66,20 @@ export default function AdminSubmissions() {
     sub.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     users?.find(u => u.id === sub.uploaderId)?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+
+  const handleAcknowledge = async (document: any) => {
+    if (!firestore || !adminUser) return;
+    try {
+      await updateDoc(doc(firestore, 'documents', document.id), {
+        status: 'Acknowledged',
+        updatedAt: new Date().toISOString()
+      });
+      logActivity(firestore, adminUser.uid, 'DOCUMENT_EDIT', `Admin acknowledged receipt: ${document.title}`, document.id);
+      toast({ title: "Filing Acknowledged", description: "The student will be notified of this update." });
+    } catch (e: any) {
+      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
+    }
+  };
 
   const handleDelete = async (document: any) => {
     if (!firestore || !adminUser) return;
@@ -137,7 +155,7 @@ export default function AdminSubmissions() {
                     <TableRow className="border-none">
                       <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Filed Document</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase tracking-widest">Student</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase tracking-widest">Date Filed</TableHead>
                       <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Actions</TableHead>
                     </TableRow>
@@ -152,7 +170,7 @@ export default function AdminSubmissions() {
                             </div>
                             <div>
                               <p className="font-bold text-zinc-900 leading-tight">{sub.title}</p>
-                              <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">{(sub.fileSize / 1024 / 1024).toFixed(2)} MB • PDF</p>
+                              <p className="text-[10px] text-muted-foreground mt-1 uppercase font-bold">{getCategoryName(sub.categoryId)} • {(sub.fileSize / 1024 / 1024).toFixed(2)} MB</p>
                             </div>
                           </div>
                         </TableCell>
@@ -165,8 +183,12 @@ export default function AdminSubmissions() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
-                            {getCategoryName(sub.categoryId)}
+                          <Badge variant="secondary" className={cn(
+                            "border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1 flex items-center gap-1.5 w-fit",
+                            sub.status === 'Acknowledged' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                          )}>
+                            {sub.status === 'Acknowledged' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                            {sub.status || 'Pending Review'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -175,28 +197,40 @@ export default function AdminSubmissions() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right px-8">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 h-10 w-10">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                              <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Review Filing</DropdownMenuLabel>
-                              <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
-                                <a href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4 mr-3" /> View Official Filing
-                                </a>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-2 bg-zinc-50" />
-                              <DropdownMenuItem 
-                                className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
-                                onClick={() => handleDelete(sub)}
+                          <div className="flex items-center justify-end gap-2">
+                            {sub.status !== 'Acknowledged' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleAcknowledge(sub)}
+                                className="rounded-xl h-9 border-zinc-200 text-primary font-bold text-xs hover:bg-primary hover:text-white"
                               >
-                                <Trash2 className="h-4 w-4 mr-3" /> Deny & Remove Filing
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                Acknowledge
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 h-10 w-10">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
+                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Review Filing</DropdownMenuLabel>
+                                <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
+                                  <a href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4 mr-3" /> View Official Filing
+                                  </a>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="my-2 bg-zinc-50" />
+                                <DropdownMenuItem 
+                                  className="rounded-xl text-destructive cursor-pointer py-3 focus:bg-destructive focus:text-white font-medium"
+                                  onClick={() => handleDelete(sub)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-3" /> Deny & Remove Filing
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
