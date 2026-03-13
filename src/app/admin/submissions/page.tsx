@@ -15,7 +15,8 @@ import {
   MoreVertical,
   Inbox,
   Clock,
-  CheckCircle
+  CheckCircle,
+  RotateCcw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -67,15 +68,21 @@ export default function AdminSubmissions() {
     users?.find(u => u.id === sub.uploaderId)?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
   ).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
-  const handleAcknowledge = async (document: any) => {
+  const handleUpdateStatus = async (document: any, newStatus: string) => {
     if (!firestore || !adminUser) return;
     try {
       await updateDoc(doc(firestore, 'documents', document.id), {
-        status: 'Acknowledged',
+        status: newStatus,
         updatedAt: new Date().toISOString()
       });
-      logActivity(firestore, adminUser.uid, 'DOCUMENT_EDIT', `Admin acknowledged receipt: ${document.title}`, document.id);
-      toast({ title: "Filing Acknowledged", description: "The student will be notified of this update." });
+      
+      const logAction = newStatus === 'Acknowledged' ? 'Admin acknowledged receipt' : 'Admin reset status to pending (Unacknowledged)';
+      logActivity(firestore, adminUser.uid, 'DOCUMENT_EDIT', `${logAction}: ${document.title}`, document.id);
+      
+      toast({ 
+        title: newStatus === 'Acknowledged' ? "Filing Acknowledged" : "Status Reset", 
+        description: newStatus === 'Acknowledged' ? "The student will be notified of receipt." : "Document returned to Pending Review status."
+      });
     } catch (e: any) {
       toast({ title: "Update Failed", description: e.message, variant: "destructive" });
     }
@@ -124,7 +131,7 @@ export default function AdminSubmissions() {
                   <Inbox className="h-6 w-6 text-primary" />
                   Submission Inbox
                 </CardTitle>
-                <CardDescription>{studentSubmissions.length} active requirement filings pending review</CardDescription>
+                <CardDescription>{studentSubmissions.length} active requirement filings monitored</CardDescription>
               </div>
               <div className="relative w-80">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -198,14 +205,24 @@ export default function AdminSubmissions() {
                         </TableCell>
                         <TableCell className="text-right px-8">
                           <div className="flex items-center justify-end gap-2">
-                            {sub.status !== 'Acknowledged' && (
+                            {sub.status !== 'Acknowledged' ? (
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => handleAcknowledge(sub)}
+                                onClick={() => handleUpdateStatus(sub, 'Acknowledged')}
                                 className="rounded-xl h-9 border-zinc-200 text-primary font-bold text-xs hover:bg-primary hover:text-white"
                               >
                                 Acknowledge
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleUpdateStatus(sub, 'Pending Review')}
+                                className="rounded-xl h-9 text-amber-600 font-bold text-xs hover:bg-amber-50 group/reset"
+                              >
+                                <RotateCcw className="h-3 w-3 mr-1.5 transition-transform group-hover/reset:-rotate-180" />
+                                Reset to Pending
                               </Button>
                             )}
                             <DropdownMenu>
