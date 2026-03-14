@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -57,14 +56,11 @@ export default function DocumentManagement() {
   const documentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
-  const usersQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'users') : null, [firestore, user]);
 
   const { data: documents, isLoading: docsLoading } = useCollection(documentsQuery);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
-  const { data: users } = useCollection(usersQuery);
 
-  // Segregation: Only show institutional docs (cics-docs) in this tab
   const filteredDocs = documents?.filter(doc => {
     const isInstitutional = doc.fileUrl?.includes('cics-docs') || !doc.fileUrl?.includes('student-submissions');
     const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -74,7 +70,6 @@ export default function DocumentManagement() {
 
   const handleToggleVisibility = async (documentData: any) => {
     if (!firestore || !user) return;
-    // Default to 'published' if missing
     const currentStatus = documentData.visibilityStatus || 'published';
     const isHidden = currentStatus === 'hidden';
     const newStatus = isHidden ? 'published' : 'hidden';
@@ -95,7 +90,7 @@ export default function DocumentManagement() {
       
       toast({ 
         title: isHidden ? "Record Published" : "Record Hidden",
-        description: isHidden ? "Document is now visible to students in the library." : "Document has been suppressed from student library view."
+        description: isHidden ? "Document is now visible to students." : "Document has been hidden from student view."
       });
     } catch (e: any) {
       toast({ title: "Update Failed", description: e.message, variant: "destructive" });
@@ -110,17 +105,10 @@ export default function DocumentManagement() {
         if (document.fileUrl) {
           await deleteFromBlob(document.fileUrl);
         }
-        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted document and file: ${document.title}`, document.id);
-        toast({
-          title: "Document Deleted",
-          description: "File and record removed successfully.",
-        });
+        logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Deleted document: ${document.title}`, document.id);
+        toast({ title: "Document Deleted" });
       } catch (e: any) {
-        toast({
-          title: "Cleanup Error",
-          description: "Record removed but cloud file deletion might have failed.",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: e.message, variant: "destructive" });
       }
     }
   };
@@ -141,7 +129,7 @@ export default function DocumentManagement() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Library</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage and host curriculum resources. Control visibility for students.</p>
+              <p className="text-muted-foreground mt-1 text-lg">Manage and host curriculum resources.</p>
             </div>
             <Button 
               onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
@@ -159,16 +147,14 @@ export default function DocumentManagement() {
                   <CardTitle className="font-headline font-bold text-xl">Official Records</CardTitle>
                   <CardDescription>Managing {filteredDocs?.length || 0} institutional files</CardDescription>
                 </div>
-                <div className="flex gap-4">
-                  <div className="relative w-72">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search resources..." 
-                      className="pl-11 h-11 rounded-2xl bg-zinc-50 border-none focus-visible:ring-primary"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
+                <div className="relative w-72">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search resources..." 
+                    className="pl-11 h-11 rounded-2xl bg-zinc-50 border-none focus-visible:ring-primary"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </CardHeader>
               <CardContent className="p-0">
