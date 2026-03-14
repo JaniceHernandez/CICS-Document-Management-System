@@ -286,7 +286,7 @@ function LoginContent() {
                   className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Authorize Access'}
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Log In'}
                 </Button>
               </form>
             ) : (
