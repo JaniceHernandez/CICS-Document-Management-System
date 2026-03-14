@@ -172,7 +172,7 @@ export default function LandingPage() {
             </nav>
           </div>
           <p className="text-[10px] text-muted-foreground text-center border-t pt-8 font-bold uppercase tracking-widest">
-            © 2024 NEW ERA UNIVERSITY - CICS. ALL RIGHTS RESERVED.
+            © 2026 NEW ERA UNIVERSITY - CICS. ALL RIGHTS RESERVED.
           </p>
         </div>
       </footer>

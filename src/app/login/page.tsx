@@ -203,7 +203,7 @@ function LoginContent() {
         <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
           <ArrowLeft className="h-4 w-4" />
         </div>
-        Return to Portal Hub
+        Return to Welcome Page
       </Link>
       
       <div className="w-full max-w-lg space-y-10 relative z-10">
@@ -221,9 +221,9 @@ function LoginContent() {
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">
-              Institutional Gateway
+            COLLEGE OF INFORMATICS AND COMPUTING STUDIES
             </h1>
-            <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[10px]">CICS Document Management System</p>
+            <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[12px]">Document Management System</p>
           </div>
         </div>
 
@@ -234,15 +234,15 @@ function LoginContent() {
             </div>
             <CardTitle className="text-3xl font-headline font-bold text-primary flex items-center justify-center gap-3">
               {targetRole === 'admin' ? (
-                <><ShieldCheck className="h-7 w-7 text-secondary" /> Staff Portal</>
+                <><ShieldCheck className="h-7 w-7 text-secondary" /> Admin Portal</>
               ) : (
                 <><GraduationCap className="h-7 w-7 text-secondary" /> Student Portal</>
               )}
             </CardTitle>
             <CardDescription className="text-base font-medium text-zinc-500">
               {targetRole === 'admin' 
-                ? 'Authorized institutional staff only.' 
-                : 'Authenticate with your NEU Google account.'}
+                ? 'Authorized CICS staff and faculty access only.' 
+                : 'Please use your NEU institutional credentials.'}
             </CardDescription>
           </CardHeader>
           
@@ -250,7 +250,7 @@ function LoginContent() {
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-6">
                 <div className="space-y-3">
-                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Staff ID</Label>
+                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Email</Label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
@@ -266,7 +266,7 @@ function LoginContent() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Access Key</Label>
+                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Password</Label>
                   <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
@@ -300,19 +300,19 @@ function LoginContent() {
                   {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : (
                     <>
                       <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} />
-                      Sign in with Institutional Account
+                      Sign in with NEU account
                     </>
                   )}
                 </Button>
                 <div className="flex items-center gap-4 py-2">
                   <div className="h-px bg-zinc-100 flex-1" />
-                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest text-center px-4">Institutional SSO</span>
+                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest text-center px-4">Institutional Single Sign-On</span>
                   <div className="h-px bg-zinc-100 flex-1" />
                 </div>
                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-4">
                   <Globe className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                    Student access is strictly limited to verified @neu.edu.ph domain profiles.
+                  Access is restricted to active @neu.edu.ph domain accounts. Please ensure you are logged into your institutional Google account.
                   </p>
                 </div>
               </div>
@@ -328,14 +328,14 @@ function LoginContent() {
               {targetRole === 'admin' ? (
                 <>Switch to Student Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
               ) : (
-                <>Switch to Staff Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
+                <>Switch to Admin Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
               )}
             </Link>
           </CardFooter>
         </Card>
         
         <p className="text-center text-zinc-400 text-[9px] font-bold uppercase tracking-widest pb-10">
-          © 2024 New Era University • College of Informatics and Computing Studies
+          © 2026 New Era University • College of Informatics and Computing Studies
         </p>
       </div>
     </div>
