@@ -11,11 +11,10 @@ import { ArrowLeft, Mail, Loader2, Lock, ShieldCheck, GraduationCap, Globe } fro
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, useUser, initiateGoogleSignIn } from '@/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { logActivity } from '@/lib/activity-logging';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { cn } from '@/lib/utils';
 
 function LoginContent() {
   const router = useRouter();
@@ -67,6 +66,7 @@ function LoginContent() {
             return;
           }
 
+          // Sync Admin Profile
           await setDoc(userDocRef, {
             id: user.uid,
             email: user.email,
@@ -82,6 +82,7 @@ function LoginContent() {
           return;
         }
 
+        // Student Domain Validation
         const userEmail = user.email || '';
         const isAuthorizedDomain = userEmail.endsWith('@neu.edu.ph') || 
                                    userEmail.includes('test') || 

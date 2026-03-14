@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, getDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 
@@ -71,16 +71,7 @@ export default function StudentDocuments() {
     checkOnboarding();
   }, [user, isUserLoading, firestore, router]);
 
-  const docsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    // Server-side filtering for published institutional documents
-    return query(
-      collection(firestore, 'documents'),
-      where('type', '==', 'institutional'),
-      where('visibilityStatus', '==', 'published')
-    );
-  }, [firestore, user]);
-
+  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
 
@@ -88,8 +79,19 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
+  // Filtering Logic: 
+  // 1. Must NOT be from the 'student-submissions' folder
+  // 2. Only show documents for the student's program(s) OR "All Programs" (Global)
+  // 3. Respect administrative visibility status
   const filteredDocs = documents?.filter(doc => {
-    const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+    // Segregation check: exclude student submissions
+    const isStudentSub = doc.fileUrl?.includes('student-submissions') || doc.type === 'submission';
+    if (isStudentSub) return false;
+
+    // Visibility check
+    if (doc.visibilityStatus === 'hidden') return false;
+
+    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     
     // Check if document is Global or matches the student's program(s)

@@ -15,9 +15,10 @@ export function initializeFirebase() {
   let firebaseApp;
   
   // Prioritize the config object if it's populated to avoid initialization errors during build/dev
-  const hasConfig = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY";
+  const hasConfig = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.apiKey !== "";
 
   if (hasConfig) {
+    // If we have a config, use it directly. This avoids the app/no-options error during build.
     firebaseApp = initializeApp(firebaseConfig);
   } else {
     try {
