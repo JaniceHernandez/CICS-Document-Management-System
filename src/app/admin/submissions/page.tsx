@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -234,7 +233,7 @@ export default function AdminSubmissions() {
                               <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
                                 <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2 uppercase tracking-widest">Review Filing</DropdownMenuLabel>
                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
-                                  <a href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} target="_blank" rel="noopener noreferrer">
+                                  <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer">
                                     <ExternalLink className="h-4 w-4 mr-3" /> View Official Filing
                                   </a>
                                 </DropdownMenuItem>

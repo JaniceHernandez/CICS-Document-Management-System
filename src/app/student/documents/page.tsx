@@ -128,17 +128,19 @@ export default function StudentDocuments() {
       updatedAt: new Date().toISOString()
     });
 
-    const downloadUrl = `/api/blob?url=${encodeURIComponent(documentData.fileUrl)}&download=true`;
+    // In Static HTML Export, we link directly to the blob. 
+    // Browser handles the download based on Blob headers or iframe.
     const link = document.createElement('a');
-    link.href = downloadUrl;
+    link.href = documentData.fileUrl;
     link.setAttribute('download', documentData.fileName);
+    link.setAttribute('target', '_blank');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     toast({
-      title: "Download Initiated",
-      description: `Downloading ${documentData.title}...`,
+      title: "File Accessed",
+      description: `Opening ${documentData.title}...`,
     });
   };
 
@@ -318,7 +320,7 @@ export default function StudentDocuments() {
             <div className="flex-1 bg-zinc-800 relative overflow-hidden">
               {previewDoc && (
                 <iframe 
-                  src={`/api/blob?url=${encodeURIComponent(previewDoc.fileUrl)}#toolbar=0`}
+                  src={`${previewDoc.fileUrl}#toolbar=0`}
                   className="w-full h-full border-none"
                   title={previewDoc.title}
                 />

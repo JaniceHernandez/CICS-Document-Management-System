@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -228,7 +227,7 @@ export default function StudentSubmitPage() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                             <a 
-                              href={`/api/blob?url=${encodeURIComponent(sub.fileUrl)}`} 
+                              href={sub.fileUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5"
