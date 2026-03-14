@@ -33,7 +33,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, deleteDoc, limit } from 'firebase/firestore';
+import { collection, doc, query, where, deleteDoc, limit, orderBy } from 'firebase/firestore';
 import { deleteFromBlob } from '@/app/actions/storage';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
@@ -75,12 +75,13 @@ export default function StudentSubmitPage() {
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   
-  // Strict Query: Only retrieve documents submitted by the current student to ensure absolute data isolation
+  // Strict Query Masking: Students only see their own filings
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
       collection(firestore, 'documents'), 
       where('uploaderId', '==', user.uid),
+      where('type', '==', 'submission'),
       limit(100)
     );
   }, [firestore, user]);
@@ -176,7 +177,7 @@ export default function StudentSubmitPage() {
                         <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Retrieving your filings...</p>
                       </TableCell>
                     </TableRow>
-                  ) : submissions?.length === 0 ? (
+                  ) : !submissions || submissions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
@@ -184,7 +185,7 @@ export default function StudentSubmitPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    submissions?.sort((a,b) => new Date(b.uploadDate || b.createdAt).getTime() - new Date(a.uploadDate || a.createdAt).getTime()).map((sub) => (
+                    submissions.sort((a,b) => new Date(b.uploadDate || b.createdAt || 0).getTime() - new Date(a.uploadDate || a.createdAt || 0).getTime()).map((sub) => (
                       <TableRow key={sub.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
                         <TableCell className="px-8 py-5">
                           <div className="flex items-center gap-4">

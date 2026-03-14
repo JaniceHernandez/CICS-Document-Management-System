@@ -102,11 +102,12 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
         fileUrl,
         fileName: file.name,
         fileSize: file.size,
+        type: 'submission',
         status: 'Pending Review',
         uploadDate: now,
         uploaderId: user.uid,
         categoryId,
-        programIds: [], // Defaults to Global for admin review
+        programIds: [], 
         downloadCount: 0,
         createdAt: now,
         updatedAt: now,

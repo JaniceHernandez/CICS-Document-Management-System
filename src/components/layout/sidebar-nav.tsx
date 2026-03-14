@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -68,8 +69,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
     }
   };
 
-  const displayName = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Authenticated User';
-  const displayRole = role === 'admin' ? 'Institutional Admin' : 'Verified Student';
+  const fullName = profile?.fullName || user?.displayName || 'Institutional User';
+  const displayRole = role === 'admin' ? 'Staff' : 'Student';
 
   return (
     <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
@@ -128,12 +129,12 @@ export function SidebarNav({ role }: SidebarNavProps) {
               <GraduationCap className="h-3 w-3 text-secondary" />
             )}
             <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
-              {displayRole}
+              Authenticated {displayRole}
             </p>
           </div>
           <div>
             <p className="text-xs font-bold leading-tight line-clamp-2 text-white">
-              {isProfileLoading ? 'Establishing session...' : displayName}
+              {isProfileLoading ? 'Verifying Profile...' : `${displayRole}: ${fullName}`}
             </p>
             {profile?.neuStudentId && (
               <p className="text-[9px] font-medium text-white/30 mt-1 uppercase tracking-tighter">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -79,15 +80,18 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
+  // Filtering Logic: 
+  // 1. Must NOT be from the 'student-submissions' folder (institutional type check)
+  // 2. Must be published
+  // 3. Only show documents for the student's program(s) OR "All Programs" (Global)
   const filteredDocs = documents?.filter(doc => {
-    // Segregation check: exclude student submissions
-    const isStudentSub = doc.fileUrl?.includes('student-submissions');
-    if (isStudentSub) return false;
+    // Visibility Check: Only show published institutional resources
+    const isInstitutional = doc.type === 'institutional' || !doc.fileUrl?.includes('student-submissions');
+    const isPublished = doc.visibilityStatus !== 'hidden';
+    
+    if (!isInstitutional || !isPublished) return false;
 
-    // Visibility Check: Do not show hidden documents
-    if (doc.visibilityStatus === 'hidden') return false;
-
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     
     // Check if document is Global or matches the student's program(s)
@@ -100,15 +104,12 @@ export default function StudentDocuments() {
   });
 
   const sortedDocs = filteredDocs?.sort((a, b) => {
-    if (sortBy === 'recent') {
-      return new Date(b.uploadDate || b.createdAt).getTime() - new Date(a.uploadDate || a.createdAt).getTime();
-    }
-    if (sortBy === 'downloads') {
-      return (b.downloadCount || 0) - (a.downloadCount || 0);
-    }
-    if (sortBy === 'alpha') {
-      return a.title.localeCompare(b.title);
-    }
+    const dateA = new Date(a.uploadDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.uploadDate || b.createdAt || 0).getTime();
+
+    if (sortBy === 'recent') return dateB - dateA;
+    if (sortBy === 'downloads') return (b.downloadCount || 0) - (a.downloadCount || 0);
+    if (sortBy === 'alpha') return (a.title || '').localeCompare(b.title || '');
     return 0;
   });
 
@@ -130,7 +131,7 @@ export default function StudentDocuments() {
 
     const link = document.createElement('a');
     link.href = documentData.fileUrl;
-    link.setAttribute('download', documentData.fileName);
+    link.setAttribute('download', documentData.fileName || 'document.pdf');
     link.setAttribute('target', '_blank');
     document.body.appendChild(link);
     link.click();
@@ -301,7 +302,7 @@ export default function StudentDocuments() {
               <div>
                 <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
                 <DialogDescription className="text-white/70">
-                  Uploaded on {previewDoc && new Date(previewDoc.uploadDate).toLocaleDateString()}
+                  Uploaded on {previewDoc && new Date(previewDoc.uploadDate || previewDoc.createdAt).toLocaleDateString()}
                 </DialogDescription>
               </div>
             </div>

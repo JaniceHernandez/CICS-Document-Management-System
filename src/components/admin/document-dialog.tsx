@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -137,6 +138,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
         fileUrl,
         fileName,
         fileSize,
+        type: 'institutional',
         uploadDate: isEdit ? editDoc.uploadDate : now,
         uploaderId: user.uid,
         categoryId,
