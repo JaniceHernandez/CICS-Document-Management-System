@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
@@ -43,7 +42,7 @@ function LoginContent() {
         if (userData?.status === 'blocked') {
           toast({
             title: "Account Blocked",
-            description: "Your account has been suspended. Please contact CICS administration.",
+            description: "Your institutional account has been suspended.",
             variant: "destructive"
           });
           await signOut(auth);
@@ -55,6 +54,7 @@ function LoginContent() {
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
 
+          // Default bootstrap for initial admin setup
           if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
             await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
           }
@@ -63,8 +63,8 @@ function LoginContent() {
           
           if (!isAdmin) {
             toast({
-              title: "Unauthorized",
-              description: "You do not have administrator privileges.",
+              title: "Unauthorized Access",
+              description: "Your account does not have administrative privileges.",
               variant: "destructive"
             });
             await signOut(auth);
@@ -75,14 +75,14 @@ function LoginContent() {
           await setDoc(userDocRef, {
             id: user.uid,
             email: user.email,
-            fullName: user.displayName || 'Administrator',
+            fullName: user.displayName || userData?.fullName || 'Institutional Administrator',
             role: 'Admin',
             status: 'active',
             lastLoginAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           }, { merge: true });
           
-          logActivity(firestore, user.uid, 'LOGIN', 'Admin login successful');
+          logActivity(firestore, user.uid, 'LOGIN', 'Administrative login successful');
           router.push('/admin/dashboard');
           return;
         }
@@ -97,7 +97,7 @@ function LoginContent() {
             await setDoc(userDocRef, {
               id: user.uid,
               email: userEmail,
-              fullName: user.displayName || 'CICS Student',
+              fullName: user.displayName || 'Institutional Student',
               role: 'Student',
               status: 'active',
               createdAt: new Date().toISOString(),
@@ -107,12 +107,13 @@ function LoginContent() {
             });
           } else {
             await setDoc(userDocRef, {
+              fullName: user.displayName || userData?.fullName || 'Institutional Student',
               lastLoginAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true });
           }
 
-          logActivity(firestore, user.uid, 'LOGIN', `Student login successful: ${user.email}`);
+          logActivity(firestore, user.uid, 'LOGIN', `Student session started: ${user.email}`);
 
           const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
           
@@ -135,7 +136,7 @@ function LoginContent() {
         setIsAuthenticating(false);
         toast({
           title: "Session Error",
-          description: "Could not verify your institutional profile.",
+          description: "Could not establish a secure institutional session.",
           variant: "destructive"
         });
       }
@@ -152,7 +153,7 @@ function LoginContent() {
       if (error.code !== 'auth/popup-closed-by-user') {
         toast({
           title: "Authentication Failed",
-          description: error.message || "Failed to sign in with Google.",
+          description: error.message || "Failed to sign in with institutional Google account.",
           variant: "destructive"
         });
       }
@@ -165,7 +166,7 @@ function LoginContent() {
     if (email !== 'admin@neu.edu.ph' || password !== 'adminpassword') {
       toast({
         title: "Access Denied",
-        description: "Invalid administrator credentials.",
+        description: "Invalid institutional administrator credentials.",
         variant: "destructive"
       });
       return;
@@ -196,7 +197,7 @@ function LoginContent() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
-          <p className="text-xl font-headline font-bold text-primary animate-pulse">Establishing secure session...</p>
+          <p className="text-xl font-headline font-bold text-primary animate-pulse">Establishing institutional session...</p>
         </div>
       </div>
     );
@@ -204,7 +205,6 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decoration */}
       <div className="absolute inset-0 z-0 pointer-events-none opacity-5">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(#003366_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
@@ -213,7 +213,7 @@ function LoginContent() {
         <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
           <ArrowLeft className="h-4 w-4" />
         </div>
-        Return to Portal Hub
+        Return to Institutional Hub
       </Link>
       
       <div className="w-full max-w-lg space-y-10 relative z-10">
@@ -231,7 +231,7 @@ function LoginContent() {
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">
-              Institutional Access
+              Institutional Gateway
             </h1>
             <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[10px]">CICS Document Management System</p>
           </div>
@@ -240,11 +240,11 @@ function LoginContent() {
         <Card className="border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="space-y-2 p-10 pb-8 text-center bg-zinc-50/50 border-b relative">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1 bg-primary text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-xl">
-              Official Gateway
+              Official Portal
             </div>
             <CardTitle className="text-3xl font-headline font-bold text-primary flex items-center justify-center gap-3">
               {targetRole === 'admin' ? (
-                <><ShieldCheck className="h-7 w-7 text-secondary" /> Administrative Portal</>
+                <><ShieldCheck className="h-7 w-7 text-secondary" /> Staff Entrance</>
               ) : (
                 <><GraduationCap className="h-7 w-7 text-secondary" /> Student Portal</>
               )}
@@ -296,7 +296,7 @@ function LoginContent() {
                   className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Authenticate Credentials'}
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Verify Credentials'}
                 </Button>
               </form>
             ) : (
@@ -322,7 +322,7 @@ function LoginContent() {
                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-4">
                   <Globe className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                    Access is restricted to active @neu.edu.ph domain accounts. Please ensure you are logged into your institutional Google profile.
+                    Access is restricted to active @neu.edu.ph domain accounts. Your full name will be synced with your institutional profile.
                   </p>
                 </div>
               </div>
@@ -338,7 +338,7 @@ function LoginContent() {
               {targetRole === 'admin' ? (
                 <>Switch to Student Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
               ) : (
-                <>Switch to Admin Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
+                <>Switch to Staff Access <ArrowLeft className="h-3 w-3 rotate-180" /></>
               )}
             </Link>
           </CardFooter>

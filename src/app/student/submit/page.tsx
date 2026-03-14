@@ -32,7 +32,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, where, deleteDoc, limit } from 'firebase/firestore';
 import { deleteFromBlob } from '@/app/actions/storage';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
@@ -73,9 +73,15 @@ export default function StudentSubmitPage() {
   }, [user, isUserLoading, router]);
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  
+  // Strict Query: Only retrieve documents submitted by the current student
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return query(collection(firestore, 'documents'), where('uploaderId', '==', user.uid));
+    return query(
+      collection(firestore, 'documents'), 
+      where('uploaderId', '==', user.uid),
+      limit(100)
+    );
   }, [firestore, user]);
 
   const { data: categories } = useCollection(categoriesQuery);
@@ -148,7 +154,7 @@ export default function StudentSubmitPage() {
           <section className="space-y-6">
             <div className="flex items-center gap-2 text-primary">
               <History className="h-5 w-5" />
-              <h2 className="text-xl font-headline font-bold">Submission Filing History</h2>
+              <h2 className="text-xl font-headline font-bold">Your Requirement Filing Ledger</h2>
             </div>
             
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
@@ -166,14 +172,14 @@ export default function StudentSubmitPage() {
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary/40" />
-                        <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Syncing records...</p>
+                        <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Retrieving your filings...</p>
                       </TableCell>
                     </TableRow>
                   ) : submissions?.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                        No documents filed yet. Submit your requirements here.
+                        No personal documents filed yet. Use 'New Submission' to start.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -246,13 +252,11 @@ export default function StudentSubmitPage() {
           </section>
         </div>
 
-        {/* Submit Dialog */}
         <SubmitDocumentDialog 
           open={isSubmitDialogOpen} 
           onOpenChange={setIsSubmitDialogOpen} 
         />
 
-        {/* Edit Dialog */}
         <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
           <DialogContent className="max-w-xl rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">

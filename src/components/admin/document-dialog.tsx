@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -143,6 +142,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
         categoryId,
         programIds: selectedPrograms,
         downloadCount: isEdit ? editDoc.downloadCount : 0,
+        visibilityStatus: isEdit ? (editDoc.visibilityStatus || 'published') : 'published',
         createdAt: isEdit ? editDoc.createdAt : now,
         updatedAt: now,
       };
@@ -182,7 +182,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             </DialogTitle>
           </div>
           <DialogDescription className="text-white/70 text-base">
-            Configure institutional metadata and Vercel Blob synchronization (Public Access).
+            Configure institutional metadata and visibility for this curriculum asset.
           </DialogDescription>
         </DialogHeader>
 
@@ -319,7 +319,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
             <div className="space-y-1">
               <p className="text-sm font-bold text-amber-900">Deployment Notice</p>
               <p className="text-xs text-amber-700 leading-relaxed">
-                By publishing, this document will be instantly accessible to students in the targeted programs. Assets are stored in public cloud storage.
+                By publishing, this document will be instantly accessible to students in the targeted programs. You can later 'Hide' the record from the dashboard.
               </p>
             </div>
           </div>

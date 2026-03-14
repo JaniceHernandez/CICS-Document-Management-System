@@ -34,8 +34,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { collection, doc, query, where, limit } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 
@@ -47,56 +47,55 @@ export default function StudentDocuments() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const { toast } = useToast();
 
+  const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
+
   useEffect(() => {
-    async function checkOnboarding() {
-      if (!isUserLoading && !user) {
-        router.push('/login');
-        return;
-      }
-
-      if (user && firestore) {
-        const userSnap = await getDoc(doc(firestore, 'users', user.uid));
-        const userData = userSnap.data();
-        setUserProfile(userData);
-
-        if (!userData?.programIds || userData.programIds.length === 0) {
-          router.push('/student/onboarding');
-          return;
-        }
-      }
+    if (!isUserLoading && !user) {
+      router.push('/login');
+      return;
     }
-    checkOnboarding();
-  }, [user, isUserLoading, firestore, router]);
+    
+    if (!isProfileLoading && userProfile && (!userProfile.programIds || userProfile.programIds.length === 0)) {
+      router.push('/student/onboarding');
+    }
+  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
-  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  // Query only published documents to ensure strict visibility isolation
+  const docsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'documents'), 
+      where('visibilityStatus', '==', 'published'),
+      limit(500)
+    );
+  }, [firestore, user]);
+
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
 
-  const { data: documents, isLoading } = useCollection(docsQuery);
+  const { data: documents, isLoading: isDocsLoading } = useCollection(docsQuery);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
-  // Filtering Logic: 
-  // 1. Must NOT be from the 'student-submissions' folder
-  // 2. Only show documents for the student's program(s) OR "All Programs" (Global)
+  const isLoading = isUserLoading || isProfileLoading || isDocsLoading;
+
+  // Filter Logic:
+  // 1. Institutional check: only files in cics-docs OR not in student-submissions
+  // 2. Program match: Global documents (no ids) OR matches student's program
   const filteredDocs = documents?.filter(doc => {
-    // Segregation check: exclude student submissions
     const isStudentSub = doc.fileUrl?.includes('student-submissions');
     if (isStudentSub) return false;
 
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     
-    // Check if document is Global or matches the student's program(s)
     const isGlobal = !doc.programIds || doc.programIds.length === 0;
     const isForStudentProgram = userProfile?.programIds?.some((pid: string) => doc.programIds?.includes(pid));
     
-    const matchesProgram = isGlobal || isForStudentProgram;
-
-    return matchesSearch && matchesCategory && matchesProgram;
+    return matchesSearch && matchesCategory && (isGlobal || isForStudentProgram);
   });
 
   const sortedDocs = filteredDocs?.sort((a, b) => {
@@ -119,7 +118,7 @@ export default function StudentDocuments() {
       firestore, 
       user.uid, 
       'DOCUMENT_DOWNLOAD', 
-      `${userProfile?.fullName || user.email} Downloaded Document: ${documentData.title}`, 
+      `${userProfile?.fullName || user.email} Downloaded Library Resource: ${documentData.title}`, 
       documentData.id
     );
 
@@ -128,8 +127,6 @@ export default function StudentDocuments() {
       updatedAt: new Date().toISOString()
     });
 
-    // In Static HTML Export, we link directly to the blob. 
-    // Browser handles the download based on Blob headers or iframe.
     const link = document.createElement('a');
     link.href = documentData.fileUrl;
     link.setAttribute('download', documentData.fileName);
@@ -171,11 +168,9 @@ export default function StudentDocuments() {
             </div>
             <div className="flex gap-4 items-center">
               {userProfile?.programIds?.length > 0 && (
-                <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                    {studentProgramCode} Portal
-                  </span>
+                <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2 text-primary font-bold text-xs">
+                  <ShieldCheck className="h-4 w-4" />
+                  {studentProgramCode} Verified Portal
                 </div>
               )}
             </div>
@@ -229,10 +224,10 @@ export default function StudentDocuments() {
           ) : sortedDocs && sortedDocs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {sortedDocs.map((docData) => (
-                <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
+                <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white border-t-4 border-t-secondary">
                   <CardHeader className="p-6 pb-2">
                     <div className="flex justify-between items-start mb-2">
-                      <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
+                      <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3 text-[10px] font-bold uppercase">
                         {getCategoryName(docData.categoryId)}
                       </Badge>
                     </div>
@@ -241,31 +236,31 @@ export default function StudentDocuments() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 pt-2">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground mb-4">
                       <div className="flex items-center gap-1">
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5" />
                         {docData.downloadCount || 0}
                       </div>
                       <div className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        PDF
+                        <FileText className="h-3.5 w-3.5" />
+                        PDF RESOURCE
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Button 
                         variant="outline" 
-                        className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
+                        className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all font-bold text-xs"
                         onClick={() => setPreviewDoc(docData)}
                       >
                         <Eye className="h-4 w-4" />
                         Preview
                       </Button>
                       <Button 
-                        className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
+                        className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm text-xs"
                         onClick={() => handleDownload(docData)}
                       >
                         <Download className="h-4 w-4 mr-2" />
-                        Download
+                        Get File
                       </Button>
                     </div>
                   </CardContent>
@@ -303,7 +298,7 @@ export default function StudentDocuments() {
               <div>
                 <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
                 <DialogDescription className="text-white/70">
-                  Uploaded on {previewDoc && new Date(previewDoc.uploadDate).toLocaleDateString()}
+                  Institutional Resource • Uploaded {previewDoc && new Date(previewDoc.uploadDate).toLocaleDateString()}
                 </DialogDescription>
               </div>
             </div>
@@ -332,11 +327,11 @@ export default function StudentDocuments() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-primary font-bold">
                     <Info className="h-5 w-5" />
-                    Description
+                    Library Notes
                   </div>
                   <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 shadow-inner">
                     <p className="text-sm text-zinc-600 leading-relaxed italic">
-                      {previewDoc?.description || "No description provided."}
+                      {previewDoc?.description || "No description provided for this resource."}
                     </p>
                   </div>
                 </div>
@@ -347,12 +342,12 @@ export default function StudentDocuments() {
                     <Badge variant="outline" className="text-[10px] py-0">{getCategoryName(previewDoc?.categoryId)}</Badge>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>Size</span>
+                    <span>Data Size</span>
                     <span>{previewDoc && (previewDoc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>Downloads</span>
-                    <span className="text-primary">{previewDoc?.downloadCount || 0}</span>
+                    <span>Library Usage</span>
+                    <span className="text-primary">{previewDoc?.downloadCount || 0} Downloads</span>
                   </div>
                 </div>
 

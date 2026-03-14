@@ -15,11 +15,15 @@ import {
   MessageSquare,
   BarChart3,
   Upload,
-  Inbox
+  Inbox,
+  UserCircle,
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { doc } from 'firebase/firestore';
 
 interface SidebarNavProps {
   role: 'admin' | 'student';
@@ -46,10 +50,13 @@ const studentLinks = [
 export function SidebarNav({ role }: SidebarNavProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const { user } = useUser();
   const logoImage = PlaceHolderImages.find(img => img.id === 'cics-logo');
   const links = role === 'admin' ? adminLinks : studentLinks;
+
+  const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
   const handleSignOut = async () => {
     try {
@@ -59,6 +66,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
       console.error("Sign out error:", error);
     }
   };
+
+  const displayName = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Authenticated User';
 
   return (
     <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
@@ -107,10 +116,21 @@ export function SidebarNav({ role }: SidebarNavProps) {
       </div>
 
       <div className="mt-auto p-6 space-y-4">
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm">
-          <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1">Active Session</p>
-          <p className="text-xs font-bold truncate max-w-full">
-            {role === 'admin' ? 'Institutional Admin' : user?.email?.split('@')[0] || 'Authenticated User'}
+        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm space-y-3">
+          <div className="flex items-center gap-2">
+            {isProfileLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin text-white/40" />
+            ) : role === 'admin' ? (
+              <ShieldCheck className="h-3 w-3 text-secondary" />
+            ) : (
+              <UserCircle className="h-3 w-3 text-secondary" />
+            )}
+            <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
+              {role === 'admin' ? 'Administrative Access' : 'Student Access'}
+            </p>
+          </div>
+          <p className="text-xs font-bold leading-tight line-clamp-2">
+            {isProfileLoading ? 'Fetching profile...' : displayName}
           </p>
         </div>
         

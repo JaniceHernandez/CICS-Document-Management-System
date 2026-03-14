@@ -13,7 +13,10 @@ import {
   Edit, 
   ExternalLink,
   Loader2,
-  User
+  User,
+  Eye,
+  EyeOff,
+  RotateCcw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,12 +37,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, updateDoc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { deleteFromBlob } from '@/app/actions/storage';
 import { DocumentDialog } from '@/components/admin/document-dialog';
 import { logActivity } from '@/lib/activity-logging';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function DocumentManagement() {
   const firestore = useFirestore();
@@ -67,9 +71,37 @@ export default function DocumentManagement() {
     return isInstitutional && matchesSearch;
   }).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
+  const handleToggleVisibility = async (documentData: any) => {
+    if (!firestore || !user) return;
+    const isHidden = documentData.visibilityStatus === 'hidden';
+    const newStatus = isHidden ? 'published' : 'hidden';
+    
+    try {
+      await updateDoc(doc(firestore, 'documents', documentData.id), {
+        visibilityStatus: newStatus,
+        updatedAt: new Date().toISOString()
+      });
+      
+      logActivity(
+        firestore, 
+        user.uid, 
+        'DOCUMENT_EDIT', 
+        `${isHidden ? 'Published' : 'Hid'} library document: ${documentData.title}`, 
+        documentData.id
+      );
+      
+      toast({ 
+        title: isHidden ? "Record Published" : "Record Hidden",
+        description: isHidden ? "Document is now visible to students." : "Document has been suppressed from student library."
+      });
+    } catch (e: any) {
+      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
+    }
+  };
+
   const handleDelete = async (document: any) => {
     if (!firestore || !user) return;
-    if (confirm(`Delete "${document.title}" permanently?`)) {
+    if (confirm(`Delete "${document.title}" permanently? This cannot be undone.`)) {
       try {
         deleteDocumentNonBlocking(doc(firestore, 'documents', document.id));
         if (document.fileUrl) {
@@ -112,7 +144,7 @@ export default function DocumentManagement() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Library</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage and host curriculum resources.</p>
+              <p className="text-muted-foreground mt-1 text-lg">Manage, host, and control visibility of curriculum resources.</p>
             </div>
             <Button 
               onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
@@ -128,7 +160,7 @@ export default function DocumentManagement() {
               <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
                 <div className="space-y-1">
                   <CardTitle className="font-headline font-bold text-xl">Official Records</CardTitle>
-                  <CardDescription>Managing {filteredDocs?.length || 0} active institutional files</CardDescription>
+                  <CardDescription>Managing {filteredDocs?.length || 0} institutional files</CardDescription>
                 </div>
                 <div className="flex gap-4">
                   <div className="relative w-72">
@@ -153,20 +185,27 @@ export default function DocumentManagement() {
                     <TableHeader className="bg-zinc-50/50">
                       <TableRow className="border-none">
                         <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Resource Info</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Visibility</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Uploader</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Modified</TableHead>
                         <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredDocs?.map((doc) => {
+                        const isHidden = doc.visibilityStatus === 'hidden';
                         return (
-                          <TableRow key={doc.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
+                          <TableRow key={doc.id} className={cn(
+                            "hover:bg-zinc-50/50 transition-colors border-zinc-50 group",
+                            isHidden && "opacity-60 bg-zinc-50/30"
+                          )}>
                             <TableCell className="px-8 py-5">
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                                  <FileText className="h-6 w-6" />
+                                <div className={cn(
+                                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                                  isHidden ? "bg-zinc-200 text-zinc-500" : "bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white"
+                                )}>
+                                  {isHidden ? <EyeOff className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
                                 </div>
                                 <div>
                                   <p className="font-bold text-zinc-900 leading-tight">{doc.title}</p>
@@ -175,14 +214,17 @@ export default function DocumentManagement() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
-                                {getCategoryName(doc.categoryId)}
+                              <Badge className={cn(
+                                "text-[9px] font-bold uppercase tracking-widest px-3 py-1 border-none",
+                                isHidden ? "bg-zinc-200 text-zinc-600" : "bg-green-100 text-green-700"
+                              )}>
+                                {isHidden ? 'Hidden' : 'Published'}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-zinc-700">{getUploaderName(doc.uploaderId)}</span>
-                              </div>
+                              <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 border-none font-bold uppercase text-[9px] tracking-wider px-3 py-1">
+                                {getCategoryName(doc.categoryId)}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="text-[11px] text-zinc-500 font-bold uppercase">
@@ -203,6 +245,16 @@ export default function DocumentManagement() {
                                     onClick={() => { setEditingDoc(doc); setIsDialogOpen(true); }}
                                   >
                                     <Edit className="h-4 w-4 mr-3" /> Edit Metadata
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium"
+                                    onClick={() => handleToggleVisibility(doc)}
+                                  >
+                                    {isHidden ? (
+                                      <><Eye className="h-4 w-4 mr-3" /> Publish Record</>
+                                    ) : (
+                                      <><EyeOff className="h-4 w-4 mr-3" /> Hide from Students</>
+                                    )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
                                     <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
@@ -245,6 +297,12 @@ export default function DocumentManagement() {
                     <div className="p-4 bg-zinc-50 rounded-2xl">
                       <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Institutional Assets</p>
                       <p className="text-2xl font-bold text-primary">{filteredDocs?.length || 0}</p>
+                    </div>
+                    <div className="p-4 bg-zinc-50 rounded-2xl border-l-4 border-l-secondary">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Hidden Records</p>
+                      <p className="text-2xl font-bold text-zinc-500">
+                        {filteredDocs?.filter(d => d.visibilityStatus === 'hidden').length || 0}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
