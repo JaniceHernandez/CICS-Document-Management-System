@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
@@ -42,7 +43,7 @@ function LoginContent() {
         if (userData?.status === 'blocked') {
           toast({
             title: "Account Blocked",
-            description: "Your institutional account has been suspended.",
+            description: "Your institutional account access has been suspended.",
             variant: "destructive"
           });
           await signOut(auth);
@@ -54,7 +55,7 @@ function LoginContent() {
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
 
-          // Default bootstrap for initial admin setup
+          // Default bootstrap for initial admin setup (legacy support)
           if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
             await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
           }
@@ -64,7 +65,7 @@ function LoginContent() {
           if (!isAdmin) {
             toast({
               title: "Unauthorized Access",
-              description: "Your account does not have administrative privileges.",
+              description: "This account does not have administrative clearance.",
               variant: "destructive"
             });
             await signOut(auth);
@@ -82,7 +83,7 @@ function LoginContent() {
             updatedAt: new Date().toISOString()
           }, { merge: true });
           
-          logActivity(firestore, user.uid, 'LOGIN', 'Administrative login successful');
+          logActivity(firestore, user.uid, 'LOGIN', 'Administrative session established');
           router.push('/admin/dashboard');
           return;
         }
@@ -93,6 +94,8 @@ function LoginContent() {
                                    userEmail.includes('neu');
 
         if (isAuthorizedDomain) {
+          const existingRole = userData?.role || 'Student';
+          
           if (!userSnap.exists()) {
             await setDoc(userDocRef, {
               id: user.uid,
@@ -113,7 +116,7 @@ function LoginContent() {
             }, { merge: true });
           }
 
-          logActivity(firestore, user.uid, 'LOGIN', `Student session started: ${user.email}`);
+          logActivity(firestore, user.uid, 'LOGIN', `Student session synchronized: ${user.email}`);
 
           const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
           
@@ -124,8 +127,8 @@ function LoginContent() {
           }
         } else {
           toast({
-            title: "Invalid Domain",
-            description: "Students must use an @neu.edu.ph institutional account.",
+            title: "Access Denied",
+            description: "Students must authenticate with their @neu.edu.ph account.",
             variant: "destructive"
           });
           await signOut(auth);
@@ -136,7 +139,7 @@ function LoginContent() {
         setIsAuthenticating(false);
         toast({
           title: "Session Error",
-          description: "Could not establish a secure institutional session.",
+          description: "Could not synchronize your institutional profile.",
           variant: "destructive"
         });
       }
@@ -153,7 +156,7 @@ function LoginContent() {
       if (error.code !== 'auth/popup-closed-by-user') {
         toast({
           title: "Authentication Failed",
-          description: error.message || "Failed to sign in with institutional Google account.",
+          description: error.message || "Institutional sign-in failed.",
           variant: "destructive"
         });
       }
@@ -197,7 +200,7 @@ function LoginContent() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto" />
-          <p className="text-xl font-headline font-bold text-primary animate-pulse">Establishing institutional session...</p>
+          <p className="text-xl font-headline font-bold text-primary animate-pulse tracking-tight uppercase">Synchronizing Credentials...</p>
         </div>
       </div>
     );
@@ -213,7 +216,7 @@ function LoginContent() {
         <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
           <ArrowLeft className="h-4 w-4" />
         </div>
-        Return to Institutional Hub
+        Return to Portal Hub
       </Link>
       
       <div className="w-full max-w-lg space-y-10 relative z-10">
@@ -240,19 +243,19 @@ function LoginContent() {
         <Card className="border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="space-y-2 p-10 pb-8 text-center bg-zinc-50/50 border-b relative">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1 bg-primary text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-xl">
-              Official Portal
+              Official Entrance
             </div>
             <CardTitle className="text-3xl font-headline font-bold text-primary flex items-center justify-center gap-3">
               {targetRole === 'admin' ? (
-                <><ShieldCheck className="h-7 w-7 text-secondary" /> Staff Entrance</>
+                <><ShieldCheck className="h-7 w-7 text-secondary" /> Staff Portal</>
               ) : (
                 <><GraduationCap className="h-7 w-7 text-secondary" /> Student Portal</>
               )}
             </CardTitle>
             <CardDescription className="text-base font-medium text-zinc-500">
               {targetRole === 'admin' 
-                ? 'Authorized CICS staff and faculty access only.' 
-                : 'Please use your NEU institutional credentials.'}
+                ? 'Authorized institutional staff only.' 
+                : 'Authenticate with your NEU Google account.'}
             </CardDescription>
           </CardHeader>
           
@@ -260,7 +263,7 @@ function LoginContent() {
             {targetRole === 'admin' ? (
               <form onSubmit={handleAdminEmailLogin} className="space-y-6">
                 <div className="space-y-3">
-                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Staff Identifier</Label>
+                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Staff ID</Label>
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
@@ -276,7 +279,7 @@ function LoginContent() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Security Key</Label>
+                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Access Key</Label>
                   <div className="relative group">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
                     <Input 
@@ -296,7 +299,7 @@ function LoginContent() {
                   className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Verify Credentials'}
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Authorize Access'}
                 </Button>
               </form>
             ) : (
@@ -310,19 +313,19 @@ function LoginContent() {
                   {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : (
                     <>
                       <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} />
-                      Sign in with NEU Account
+                      Sign in with Institutional Account
                     </>
                   )}
                 </Button>
                 <div className="flex items-center gap-4 py-2">
                   <div className="h-px bg-zinc-100 flex-1" />
-                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Institutional Single Sign-On</span>
+                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest text-center px-4">Institutional SSO</span>
                   <div className="h-px bg-zinc-100 flex-1" />
                 </div>
                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-4">
                   <Globe className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                    Access is restricted to active @neu.edu.ph domain accounts. Your full name will be synced with your institutional profile.
+                    Student access is strictly limited to verified @neu.edu.ph domain profiles.
                   </p>
                 </div>
               </div>

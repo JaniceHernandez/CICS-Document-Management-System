@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -74,7 +75,7 @@ export default function StudentSubmitPage() {
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   
-  // Strict Query: Only retrieve documents submitted by the current student
+  // Strict Query: Only retrieve documents submitted by the current student to ensure absolute data isolation
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -183,7 +184,7 @@ export default function StudentSubmitPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    submissions?.sort((a,b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()).map((sub) => (
+                    submissions?.sort((a,b) => new Date(b.uploadDate || b.createdAt).getTime() - new Date(a.uploadDate || a.createdAt).getTime()).map((sub) => (
                       <TableRow key={sub.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
                         <TableCell className="px-8 py-5">
                           <div className="flex items-center gap-4">
@@ -208,7 +209,7 @@ export default function StudentSubmitPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs font-bold text-zinc-500">
-                          {new Date(sub.uploadDate).toLocaleDateString()}
+                          {new Date(sub.uploadDate || sub.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right px-8">
                           <div className="flex items-center justify-end gap-2">

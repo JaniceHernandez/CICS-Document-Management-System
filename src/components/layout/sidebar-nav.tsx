@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -18,7 +19,8 @@ import {
   Inbox,
   UserCircle,
   ShieldCheck,
-  Loader2
+  Loader2,
+  GraduationCap
 } from 'lucide-react';
 import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -68,6 +70,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
   };
 
   const displayName = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'Authenticated User';
+  const displayRole = role === 'admin' ? 'Institutional Admin' : 'Verified Student';
 
   return (
     <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
@@ -116,22 +119,29 @@ export function SidebarNav({ role }: SidebarNavProps) {
       </div>
 
       <div className="mt-auto p-6 space-y-4">
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm space-y-3">
+        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm space-y-2">
           <div className="flex items-center gap-2">
             {isProfileLoading ? (
               <Loader2 className="h-3 w-3 animate-spin text-white/40" />
             ) : role === 'admin' ? (
               <ShieldCheck className="h-3 w-3 text-secondary" />
             ) : (
-              <UserCircle className="h-3 w-3 text-secondary" />
+              <GraduationCap className="h-3 w-3 text-secondary" />
             )}
             <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
-              {role === 'admin' ? 'Administrative Access' : 'Student Access'}
+              {displayRole}
             </p>
           </div>
-          <p className="text-xs font-bold leading-tight line-clamp-2">
-            {isProfileLoading ? 'Fetching profile...' : displayName}
-          </p>
+          <div>
+            <p className="text-xs font-bold leading-tight line-clamp-2 text-white">
+              {isProfileLoading ? 'Establishing session...' : displayName}
+            </p>
+            {profile?.neuStudentId && (
+              <p className="text-[9px] font-medium text-white/30 mt-1 uppercase tracking-tighter">
+                ID: {profile.neuStudentId}
+              </p>
+            )}
+          </div>
         </div>
         
         <button 

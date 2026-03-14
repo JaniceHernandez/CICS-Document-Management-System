@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -66,14 +67,16 @@ export default function DocumentManagement() {
   // Segregation: Only show institutional docs (cics-docs) in this tab
   const filteredDocs = documents?.filter(doc => {
     const isInstitutional = doc.fileUrl?.includes('cics-docs') || !doc.fileUrl?.includes('student-submissions');
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          doc.fileName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (doc.fileName || '').toLowerCase().includes(searchQuery.toLowerCase());
     return isInstitutional && matchesSearch;
-  }).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+  }).sort((a, b) => new Date(b.uploadDate || b.createdAt).getTime() - new Date(a.uploadDate || a.createdAt).getTime());
 
   const handleToggleVisibility = async (documentData: any) => {
     if (!firestore || !user) return;
-    const isHidden = documentData.visibilityStatus === 'hidden';
+    // Default to 'published' if missing
+    const currentStatus = documentData.visibilityStatus || 'published';
+    const isHidden = currentStatus === 'hidden';
     const newStatus = isHidden ? 'published' : 'hidden';
     
     try {
@@ -92,7 +95,7 @@ export default function DocumentManagement() {
       
       toast({ 
         title: isHidden ? "Record Published" : "Record Hidden",
-        description: isHidden ? "Document is now visible to students." : "Document has been suppressed from student library."
+        description: isHidden ? "Document is now visible to students in the library." : "Document has been suppressed from student library view."
       });
     } catch (e: any) {
       toast({ title: "Update Failed", description: e.message, variant: "destructive" });
@@ -126,12 +129,6 @@ export default function DocumentManagement() {
     return categories?.find(c => c.id === catId)?.name || 'Uncategorized';
   };
 
-  const getUploaderName = (uid: string) => {
-    const found = users?.find(u => u.id === uid);
-    if (!found) return 'System';
-    return found.fullName || found.email;
-  };
-
   const totalSize = documents?.filter(d => d.fileUrl?.includes('cics-docs')).reduce((acc, d) => acc + (d.fileSize || 0), 0) || 0;
   const sizeInMB = (totalSize / (1024 * 1024)).toFixed(1);
 
@@ -144,7 +141,7 @@ export default function DocumentManagement() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Library</h1>
-              <p className="text-muted-foreground mt-1 text-lg">Manage, host, and control visibility of curriculum resources.</p>
+              <p className="text-muted-foreground mt-1 text-lg">Manage and host curriculum resources. Control visibility for students.</p>
             </div>
             <Button 
               onClick={() => { setEditingDoc(null); setIsDialogOpen(true); }}
@@ -185,7 +182,7 @@ export default function DocumentManagement() {
                     <TableHeader className="bg-zinc-50/50">
                       <TableRow className="border-none">
                         <TableHead className="font-bold px-8 text-[10px] uppercase tracking-widest">Resource Info</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Visibility</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Category</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-widest">Modified</TableHead>
                         <TableHead className="font-bold text-right px-8 text-[10px] uppercase tracking-widest">Options</TableHead>
@@ -228,7 +225,7 @@ export default function DocumentManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="text-[11px] text-zinc-500 font-bold uppercase">
-                                {new Date(doc.updatedAt || doc.uploadDate).toLocaleDateString()}
+                                {new Date(doc.updatedAt || doc.uploadDate || doc.createdAt).toLocaleDateString()}
                               </div>
                             </TableCell>
                             <TableCell className="text-right px-8">
@@ -251,9 +248,9 @@ export default function DocumentManagement() {
                                     onClick={() => handleToggleVisibility(doc)}
                                   >
                                     {isHidden ? (
-                                      <><Eye className="h-4 w-4 mr-3" /> Publish Record</>
+                                      <><Eye className="h-4 w-4 mr-3" /> Publish Resource</>
                                     ) : (
-                                      <><EyeOff className="h-4 w-4 mr-3" /> Hide from Students</>
+                                      <><EyeOff className="h-4 w-4 mr-3" /> Hide from Library</>
                                     )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-medium" asChild>
@@ -283,23 +280,23 @@ export default function DocumentManagement() {
             <div className="space-y-8">
               <Card className="border-none shadow-sm rounded-3xl bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-zinc-50">
-                  <CardTitle className="font-headline font-bold text-xl">Library Usage</CardTitle>
-                  <CardDescription>Institutional asset monitoring</CardDescription>
+                  <CardTitle className="font-headline font-bold text-xl">Library Insights</CardTitle>
+                  <CardDescription>Institutional vault monitoring</CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
                   <div className="space-y-3">
                     <div className="flex justify-between items-end">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Library Data</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Storage Used</span>
                       <span className="text-xl font-bold text-primary tabular-nums">{sizeInMB} MB</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-zinc-50 rounded-2xl">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Institutional Assets</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Total Assets</p>
                       <p className="text-2xl font-bold text-primary">{filteredDocs?.length || 0}</p>
                     </div>
                     <div className="p-4 bg-zinc-50 rounded-2xl border-l-4 border-l-secondary">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Hidden Records</p>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Hidden Files</p>
                       <p className="text-2xl font-bold text-zinc-500">
                         {filteredDocs?.filter(d => d.visibilityStatus === 'hidden').length || 0}
                       </p>
