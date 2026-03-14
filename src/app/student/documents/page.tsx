@@ -82,13 +82,13 @@ export default function StudentDocuments() {
   // Filtering Logic: 
   // 1. Must NOT be from the 'student-submissions' folder
   // 2. Only show documents for the student's program(s) OR "All Programs" (Global)
-  // 3. Respect administrative visibility status
+  // 3. Exclude documents marked as 'hidden' by administrators
   const filteredDocs = documents?.filter(doc => {
     // Segregation check: exclude student submissions
     const isStudentSub = doc.fileUrl?.includes('student-submissions') || doc.type === 'submission';
     if (isStudentSub) return false;
 
-    // Visibility check
+    // Visibility check: Ignore hidden records
     if (doc.visibilityStatus === 'hidden') return false;
 
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -347,7 +347,7 @@ export default function StudentDocuments() {
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     <span>Size</span>
-                    <span>{previewDoc && (previewDoc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                    <span>{previewDoc && previewDoc.fileSize ? (previewDoc.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB</span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     <span>Downloads</span>

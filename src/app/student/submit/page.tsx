@@ -45,7 +45,8 @@ import {
   ExternalLink,
   History,
   CheckCircle,
-  Clock
+  Clock,
+  Inbox
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -74,19 +75,23 @@ export default function StudentSubmitPage() {
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   
-  // Strict Query Isolation: Students only retrieve their own filings
+  // Fetch documents uplaoded by THIS student.
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
       collection(firestore, 'documents'), 
       where('uploaderId', '==', user.uid),
-      where('type', '==', 'submission'),
       limit(100)
     );
   }, [firestore, user]);
 
   const { data: categories } = useCollection(categoriesQuery);
-  const { data: submissions, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
+  const { data: documents, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
+
+  // Broaden filter to ensure student-filed records are visible even if metadata is legacy.
+  const submissions = documents?.filter(doc => {
+    return doc.type === 'submission' || doc.fileUrl?.includes('student-submissions');
+  }) || [];
 
   const handleEdit = (docData: any) => {
     setEditingDoc(docData);
@@ -154,8 +159,8 @@ export default function StudentSubmitPage() {
 
           <section className="space-y-6">
             <div className="flex items-center gap-2 text-primary">
-              <History className="h-5 w-5" />
-              <h2 className="text-xl font-headline font-bold">Your Requirement Filing Ledger</h2>
+              <Inbox className="h-5 w-5" />
+              <h2 className="text-xl font-headline font-bold">Requirement Filing Ledger</h2>
             </div>
             
             <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
@@ -176,7 +181,7 @@ export default function StudentSubmitPage() {
                         <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Retrieving your filings...</p>
                       </TableCell>
                     </TableRow>
-                  ) : !submissions || submissions.length === 0 ? (
+                  ) : submissions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-40 text-center text-muted-foreground font-medium">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
@@ -194,7 +199,7 @@ export default function StudentSubmitPage() {
                             <div>
                               <p className="font-bold text-zinc-800 leading-tight">{sub.title}</p>
                               <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                                {categories?.find(c => c.id === sub.categoryId)?.name || 'Requirement'} • {(sub.fileSize / 1024 / 1024).toFixed(2)} MB
+                                {categories?.find(c => c.id === sub.categoryId)?.name || 'Requirement'} • {sub.fileSize ? (sub.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
                               </p>
                             </div>
                           </div>

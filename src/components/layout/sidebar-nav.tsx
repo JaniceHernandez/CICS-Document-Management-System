@@ -55,6 +55,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
   const logoImage = PlaceHolderImages.find(img => img.id === 'cics-logo');
   const links = role === 'admin' ? adminLinks : studentLinks;
 
+  // Fetch verified user profile to get the Full Name
   const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
@@ -67,9 +68,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
     }
   };
 
-  // Show full name from profile, fall back to auth display name or default
+  // Prioritize Firestore fullName, fall back to Auth displayName, then generic label
   const fullName = profile?.fullName || user?.displayName || 'Institutional User';
-  const roleLabel = role === 'admin' ? 'Admin' : 'Student';
+  const roleLabel = role === 'admin' ? 'Admin' : 'Verified Student';
 
   return (
     <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
@@ -87,9 +88,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
             )}
           </div>
           <div>
-            <span className="text-[10px] font-bold tracking-[0.2em] text-white/50 block">NEU CICS</span>
+            <span className="text-[10px] font-bold tracking-[0.2em] text-white/50 block uppercase">NEU CICS</span>
             <span className="text-xs font-headline font-bold tracking-tight leading-tight uppercase block">
-              DMS PORTAL
+              DMS Portal
             </span>
           </div>
         </div>
@@ -128,12 +129,12 @@ export function SidebarNav({ role }: SidebarNavProps) {
               <GraduationCap className="h-3 w-3 text-secondary" />
             )}
             <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
-              Institutional Session
+              Session Identity
             </p>
           </div>
           <div>
             <p className="text-xs font-bold leading-tight text-white line-clamp-2">
-              {isProfileLoading ? 'Verifying...' : `${roleLabel}: ${fullName}`}
+              {isProfileLoading ? 'Identifying...' : `${roleLabel}: ${fullName}`}
             </p>
             {profile?.email && (
               <p className="text-[9px] font-medium text-white/30 mt-1 uppercase tracking-tighter truncate">
@@ -145,7 +146,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
         
         <button 
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-destructive/90 transition-all group font-bold text-xs uppercase tracking-wider"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-destructive transition-all group font-bold text-xs uppercase tracking-wider"
         >
           <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           <span>Sign Out</span>
