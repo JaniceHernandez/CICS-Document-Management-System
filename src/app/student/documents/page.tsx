@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -36,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, query, where } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 
@@ -72,7 +71,16 @@ export default function StudentDocuments() {
     checkOnboarding();
   }, [user, isUserLoading, firestore, router]);
 
-  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const docsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    // Server-side filtering for published institutional documents
+    return query(
+      collection(firestore, 'documents'),
+      where('type', '==', 'institutional'),
+      where('visibilityStatus', '==', 'published')
+    );
+  }, [firestore, user]);
+
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
 
@@ -80,17 +88,7 @@ export default function StudentDocuments() {
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
 
-  // Filtering Logic: 
-  // 1. Must NOT be from the 'student-submissions' folder (institutional type check)
-  // 2. Must be published
-  // 3. Only show documents for the student's program(s) OR "All Programs" (Global)
   const filteredDocs = documents?.filter(doc => {
-    // Visibility Check: Only show published institutional resources
-    const isInstitutional = doc.type === 'institutional' || !doc.fileUrl?.includes('student-submissions');
-    const isPublished = doc.visibilityStatus !== 'hidden';
-    
-    if (!isInstitutional || !isPublished) return false;
-
     const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -15,7 +14,9 @@ import {
   ExternalLink,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Globe,
+  Lock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -59,7 +60,7 @@ export default function DocumentManagement() {
   const { data: categories } = useCollection(categoriesQuery);
 
   const filteredDocs = documents?.filter(doc => {
-    // Only show institutional records in this view
+    // Only show institutional records in this view (not student submissions)
     const isInstitutional = doc.type === 'institutional' || !doc.fileUrl?.includes('student-submissions');
     const matchesSearch = (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase());
     return isInstitutional && matchesSearch;
@@ -194,6 +195,7 @@ export default function DocumentManagement() {
                               "text-[9px] font-bold uppercase tracking-widest px-3 py-1 border-none",
                               isHidden ? "bg-zinc-200 text-zinc-600" : "bg-green-100 text-green-700"
                             )}>
+                              {isHidden ? <Lock className="h-3 w-3 mr-1.5" /> : <Globe className="h-3 w-3 mr-1.5" />}
                               {isHidden ? 'Hidden' : 'Published'}
                             </Badge>
                           </TableCell>

@@ -8,29 +8,31 @@ import { getStorage } from 'firebase/storage'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
+  if (getApps().length > 0) {
+    return getSdks(getApp());
+  }
+
+  let firebaseApp;
+  
+  // Prioritize the config object if it's populated to avoid initialization errors during build/dev
+  const hasConfig = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY";
+
+  if (hasConfig) {
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
     try {
-      // Attempt to initialize via Firebase App Hosting environment variables
+      // Fallback to automatic environment detection (e.g. Firebase App Hosting)
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
+      // Only warn if we absolutely have no other choice
       if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+        console.warn('Firebase initialization: Attempting fallback to potentially empty config object.', e);
       }
       firebaseApp = initializeApp(firebaseConfig);
     }
-
-    return getSdks(firebaseApp);
   }
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

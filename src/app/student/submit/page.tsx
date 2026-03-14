@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -33,7 +32,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, deleteDoc, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, query, where, deleteDoc, limit } from 'firebase/firestore';
 import { deleteFromBlob } from '@/app/actions/storage';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
@@ -75,7 +74,7 @@ export default function StudentSubmitPage() {
 
   const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
   
-  // Strict Query Masking: Students only see their own filings
+  // Strict Query Isolation: Students only retrieve their own filings
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(

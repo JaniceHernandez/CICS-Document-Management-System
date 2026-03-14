@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
@@ -55,11 +54,6 @@ function LoginContent() {
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
 
-          // Default bootstrap for initial admin setup (legacy support)
-          if (!adminSnap.exists() && user.email === 'admin@neu.edu.ph') {
-            await setDoc(adminRoleRef, { id: user.uid }, { merge: true });
-          }
-
           const isAdmin = adminSnap.exists() || user.email === 'admin@neu.edu.ph';
           
           if (!isAdmin) {
@@ -94,8 +88,6 @@ function LoginContent() {
                                    userEmail.includes('neu');
 
         if (isAuthorizedDomain) {
-          const existingRole = userData?.role || 'Student';
-          
           if (!userSnap.exists()) {
             await setDoc(userDocRef, {
               id: user.uid,
@@ -118,7 +110,9 @@ function LoginContent() {
 
           logActivity(firestore, user.uid, 'LOGIN', `Student session synchronized: ${user.email}`);
 
-          const needsOnboarding = !userData?.programIds || userData.programIds.length === 0;
+          const currentDoc = await getDoc(userDocRef);
+          const currentData = currentDoc.data();
+          const needsOnboarding = !currentData?.programIds || currentData.programIds.length === 0;
           
           if (needsOnboarding) {
             router.push('/student/onboarding');
@@ -178,19 +172,11 @@ function LoginContent() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } catch (createError: any) {
-          toast({ title: "Auth Error", description: createError.message, variant: "destructive" });
-        }
-      } else {
-        toast({
-          title: "Authentication Error",
-          description: error.message || "Failed to log in as administrator.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Authentication Error",
+        description: error.message || "Failed to log in as administrator.",
+        variant: "destructive"
+      });
       setIsAuthenticating(false);
     }
   };
