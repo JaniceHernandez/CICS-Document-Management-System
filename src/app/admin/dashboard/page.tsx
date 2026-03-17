@@ -85,6 +85,7 @@ export default function AdminDashboard() {
 
   const studentCount = users?.filter(u => u.role === 'Student').length || 0;
   
+  // Refined count: Only institutional documents (uploaded to cics-docs/ or marked institutional)
   const docCount = allDocs?.filter(d => 
     d.type === 'institutional' || 
     d.fileUrl?.includes('cics-docs')

@@ -277,8 +277,8 @@ export default function AdminSettings() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Input placeholder="Program Name" className="w-48 h-10 rounded-xl" value={newProgName} onChange={(e) => setNewProgName(e.target.value)} />
-                  <Input placeholder="Code" className="w-24 h-10 rounded-xl" value={newProgCode} onChange={(e) => setNewProgCode(e.target.value)} />
+                  <Input placeholder="Program Name" className="w-48 h-10 rounded-xl value={newProgName} onChange={(e) => setNewProgName(e.target.value)} />
+                  <Input placeholder="Code" className="w-24 h-10 rounded-xl value={newProgCode} onChange={(e) => setNewProgCode(e.target.value)} />
                   <Button onClick={addProgram} disabled={!newProgName || !newProgCode || isProcessing} className="rounded-xl h-10 bg-primary font-bold transition-all hover:scale-105">
                     Add Program
                   </Button>

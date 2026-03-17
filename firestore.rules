@@ -3,10 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * CICS Docs Hub - Security Rules Documentation
+     * CICS Docs Hub - Security Rules
      */
-
-    // --- GLOBAL HELPER FUNCTIONS ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -27,23 +25,19 @@ service cloud.firestore {
       );
     }
 
-    // --- COLLECTION RULES ---
-
     match /users/{userId} {
       allow get, list: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
-      // Only super admin can modify other admins or the super admin account itself.
-      // Regular admins can only modify students.
+      // Only super admin can modify staff or delete accounts. Regular admins manage students.
       allow update: if isOwner(userId) || 
                     isSuperAdmin() || 
-                    (isAdmin() && resource.data.role == 'Student' && resource.data.email != 'admin@neu.edu.ph');
+                    (isAdmin() && resource.data.role == 'Student');
       allow delete: if isSuperAdmin();
     }
 
     match /adminRoles/{adminId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // Allow users to create their own role entry if they are the super admin or have been authorized
       allow create: if isOwner(adminId) || isSuperAdmin();
       allow update, delete: if isSuperAdmin(); 
     }
@@ -51,7 +45,6 @@ service cloud.firestore {
     match /authorizedAdmins/{emailId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      // Only the Super Admin can add or remove administrative clearances.
       allow write: if isSuperAdmin();
     }
 

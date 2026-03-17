@@ -84,7 +84,7 @@ export default function InstitutionalRegistry() {
 
   const isSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
 
-  // Combine active users and pending administrative clearances
+  // Combine active users and pending administrative clearances into one list
   const combinedMembers = [...(users || [])];
   
   authorizedAdmins?.forEach(auth => {
@@ -110,6 +110,7 @@ export default function InstitutionalRegistry() {
     if (roleFilter === 'all') return matchesSearch;
     return matchesSearch && u.role === roleFilter;
   }).sort((a, b) => {
+    // Keep Super Admin at the top
     if (a.email === SUPER_ADMIN_EMAIL) return -1;
     if (b.email === SUPER_ADMIN_EMAIL) return 1;
     return (a.fullName || '').localeCompare(b.fullName || '');
@@ -172,32 +173,30 @@ export default function InstitutionalRegistry() {
     }
   };
 
-  const handleRevokeClearance = async (userData: any) => {
+  const handleDeleteAccount = async (member: any) => {
     if (!firestore || !isSuperAdmin) return;
-    if (userData.email === SUPER_ADMIN_EMAIL) {
-      toast({ title: "Action Denied", description: "Super Admin clearance cannot be revoked.", variant: "destructive" });
+    if (member.email === SUPER_ADMIN_EMAIL) {
+      toast({ title: "Action Denied", description: "Super Admin account cannot be deleted.", variant: "destructive" });
       return;
     }
 
-    if (confirm(`Revoke administrative clearance for ${userData.email}?`)) {
+    if (confirm(`PERMANENTLY DELETE profile and administrative clearance for ${member.email}? This will remove all Firestore records for this account.`)) {
       try {
-        const emailId = userData.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+        const emailId = member.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+        
+        // 1. Delete from authorized registry
         await deleteDoc(doc(firestore, 'authorizedAdmins', emailId));
         
-        // If the user has an active profile, downgrade them or block them
-        if (!userData.isPendingAuth) {
-          updateDocumentNonBlocking(doc(firestore, 'users', userData.id), {
-            role: 'Student', // Or just block them
-            status: 'blocked',
-            updatedAt: new Date().toISOString()
-          });
-          await deleteDoc(doc(firestore, 'adminRoles', userData.id));
+        // 2. Delete the user profile if it exists
+        if (!member.isPendingAuth) {
+          await deleteDoc(doc(firestore, 'users', member.id));
+          await deleteDoc(doc(firestore, 'adminRoles', member.id));
         }
 
-        logActivity(firestore, currentUser!.uid, 'USER_BLOCKED' as any, `Revoked admin clearance: ${userData.email}`);
-        toast({ title: "Clearance Revoked" });
+        logActivity(firestore, currentUser!.uid, 'USER_BLOCKED' as any, `Super Admin PERMANENTLY DELETED account/clearance: ${member.email}`);
+        toast({ title: "Account & Clearance Deleted" });
       } catch (e: any) {
-        toast({ variant: "destructive", title: "Revocation Failed", description: e.message });
+        toast({ variant: "destructive", title: "Deletion Failed", description: e.message });
       }
     }
   };
@@ -410,10 +409,10 @@ export default function InstitutionalRegistry() {
                                     )}
                                   </DropdownMenuItem>
                                 )}
-                                {member.role === 'Admin' && isSuperAdmin && !isSuper && (
+                                {(member.role === 'Admin' || isSuperAdmin) && !isSuper && isSuperAdmin && (
                                   <DropdownMenuItem 
                                     className="cursor-pointer font-bold rounded-lg py-2 text-destructive"
-                                    onClick={() => handleRevokeClearance(member)}
+                                    onClick={() => handleDeleteAccount(member)}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" /> Delete Account/Email
                                   </DropdownMenuItem>
