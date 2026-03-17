@@ -106,10 +106,14 @@ export default function AdminDashboard() {
 
   const trendData = getTrendData();
 
-  const categoryStats = allCategories?.map(cat => ({
-    name: cat.name,
-    count: allDocs?.filter(d => d.categoryId === cat.id).length || 0
-  })).sort((a, b) => b.count - a.count) || [];
+  const categoryStats = allCategories?.map(cat => {
+    const docsInCategory = allDocs?.filter(d => d.categoryId === cat.id) || [];
+    const downloadsInCategory = docsInCategory.reduce((acc, d) => acc + (d.downloadCount || 0), 0);
+    return {
+      name: cat.name,
+      downloads: downloadsInCategory
+    };
+  }).sort((a, b) => b.downloads - a.downloads) || [];
 
   const exportToCSV = () => {
     if (!logs) return;
@@ -251,9 +255,9 @@ export default function AdminDashboard() {
               <CardHeader className="p-8 border-b border-zinc-50">
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                   <MousePointer2 className="h-6 w-6" />
-                  Files By Classification
+                  Downloads By Classification
                 </CardTitle>
-                <CardDescription>Document distribution by category.</CardDescription>
+                <CardDescription>Total downloads aggregated by document category.</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px] p-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -270,7 +274,7 @@ export default function AdminDashboard() {
                       cursor={{fill: 'transparent'}}
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
                     />
-                    <Bar dataKey="count" radius={[10, 10, 0, 0]}>
+                    <Bar dataKey="downloads" radius={[10, 10, 0, 0]}>
                       {categoryStats.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
