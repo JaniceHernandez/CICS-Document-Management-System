@@ -248,47 +248,69 @@ function LoginContent() {
           
           <CardContent className="p-10 space-y-8">
             {targetRole === 'admin' ? (
-              <form onSubmit={handleAdminEmailLogin} className="space-y-6">
-                <div className="space-y-3">
-                  <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Email</Label>
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
-                    <Input 
-                      id="email"
-                      type="email"
-                      placeholder="admin@neu.edu.ph"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
-                      disabled={isAuthenticating}
-                      required
-                    />
+              <div className="space-y-6">
+                <form onSubmit={handleAdminEmailLogin} className="space-y-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Email</Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="email"
+                        type="email"
+                        placeholder="admin@neu.edu.ph"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
+                        disabled={isAuthenticating}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Password</Label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
-                    <Input 
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
-                      disabled={isAuthenticating}
-                      required
-                    />
+                  <div className="space-y-3">
+                    <Label htmlFor="password" title="Security Key" className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 ml-1">Password</Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-12 h-14 rounded-2xl bg-zinc-50 border-none focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner text-base font-medium"
+                        disabled={isAuthenticating}
+                        required
+                      />
+                    </div>
                   </div>
+                  <Button 
+                    type="submit"
+                    className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                    disabled={isAuthenticating}
+                  >
+                    {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Log In'}
+                  </Button>
+                </form>
+
+                <div className="flex items-center gap-4 py-2">
+                  <div className="h-px bg-zinc-100 flex-1" />
+                  <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest text-center px-4">Institutional Single Sign-On</span>
+                  <div className="h-px bg-zinc-100 flex-1" />
                 </div>
+
                 <Button 
-                  type="submit"
-                  className="w-full h-16 rounded-[1.25rem] font-bold text-lg shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                  variant="outline"
+                  className="w-full h-16 rounded-[1.25rem] font-bold text-lg border-2 border-zinc-100 hover:bg-zinc-50 flex items-center justify-center gap-4 transition-all hover:scale-[1.02] active:scale-95" 
+                  onClick={handleGoogleLogin}
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Log In'}
+                  {isAuthenticating ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                    <>
+                      <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} />
+                      Sign in with NEU account
+                    </>
+                  )}
                 </Button>
-              </form>
+              </div>
             ) : (
               <div className="space-y-6">
                 <Button 
