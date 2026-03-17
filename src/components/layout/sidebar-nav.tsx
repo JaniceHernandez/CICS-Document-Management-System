@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -20,7 +21,8 @@ import {
   GraduationCap,
   Settings,
   ChevronUp,
-  User2
+  User2,
+  History
 } from 'lucide-react';
 import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -53,6 +55,7 @@ const adminLinks = [
   { href: '/admin/dashboard', label: 'Overview', icon: BarChart3 },
   { href: '/admin/documents', label: 'Institutional Library', icon: FileText },
   { href: '/admin/submissions', label: 'Student Submissions', icon: Inbox },
+  { href: '/admin/usage-log', label: 'Usage Log', icon: History },
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/students', label: 'Institutional Registry', icon: Users },
   { href: '/admin/inquiries', label: 'Support Inquiries', icon: MessageSquare },

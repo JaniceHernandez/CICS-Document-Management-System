@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -82,7 +83,13 @@ export default function AdminDashboard() {
   const { data: allCategories } = useCollection(categoriesQuery);
 
   const studentCount = users?.filter(u => u.role === 'Student').length || 0;
-  const docCount = allDocs?.length || 0;
+  
+  // Refined: Only count documents posted by admin or in cics-docs storage path
+  const docCount = allDocs?.filter(d => 
+    d.type === 'institutional' || 
+    d.fileUrl?.includes('cics-docs')
+  ).length || 0;
+
   const totalDownloads = allDocs?.reduce((acc, d) => acc + (d.downloadCount || 0), 0) || 0;
   const activeInquiries = allInquiries?.filter(i => i.status !== 'Resolved').length || 0;
 
@@ -111,7 +118,7 @@ export default function AdminDashboard() {
       name: cat.name,
       downloads: downloadsInCategory
     };
-  }).sort((a, b) => b.downloads - a.downloads) || [];
+  }).filter(c => c.name).sort((a, b) => b.downloads - a.downloads) || [];
 
   const exportToCSV = () => {
     if (!logs) return;
@@ -256,13 +263,16 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="h-[400px] p-8">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryStats}>
+                <BarChart data={categoryStats} margin={{ bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fill: '#888', fontSize: 10}} 
+                    tick={{fill: '#888', fontSize: 9}} 
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 10}} />
                   <Tooltip 
@@ -287,7 +297,7 @@ export default function AdminDashboard() {
                 <Activity className="h-6 w-6" />
                 Activity History
               </CardTitle>
-              <CardDescription>Audit ledger of user and system interactions.</CardDescription>
+              <CardDescription>Recent audit ledger of user and system interactions.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-0">
