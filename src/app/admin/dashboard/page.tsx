@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -84,7 +83,6 @@ export default function AdminDashboard() {
 
   const studentCount = users?.filter(u => u.role === 'Student').length || 0;
   
-  // Refined: Only count documents explicitly marked as institutional or in admin storage path
   const docCount = allDocs?.filter(d => 
     d.type === 'institutional' || 
     d.fileUrl?.includes('cics-docs')

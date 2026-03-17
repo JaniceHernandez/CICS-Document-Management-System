@@ -4,11 +4,6 @@ service cloud.firestore {
 
     /**
      * CICS Docs Hub - Security Rules Documentation
-     *
-     * Core Philosophy: 
-     * This ruleset enforces a strict role-based access model distinguishing between 'Students' and 'Admins'. 
-     * Security is anchored in 'Existence over Content' for administrative privileges and 'Ownership' for 
-     * student-generated data.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
@@ -22,7 +17,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/adminRoles/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/adminRoles/$(request.auth.uid)) ||
+        request.auth.token.email == 'admin@neu.edu.ph'
+      );
     }
 
     // --- COLLECTION RULES ---
@@ -40,13 +38,15 @@ service cloud.firestore {
       allow delete: if isAdmin(); 
     }
 
+    match /authorizedAdmins/{emailId} {
+      allow get: if isSignedIn();
+      allow list, write: if isAdmin();
+    }
+
     match /documents/{documentId} {
       allow get, list: if isSignedIn();
-      // Allow institutional members to submit documents
       allow create: if isSignedIn() && request.resource.data.uploaderId == request.auth.uid;
-      // Allow owners or admins to delete
       allow delete: if isAdmin() || (isSignedIn() && resource.data.uploaderId == request.auth.uid);
-      // Allow updates to download count or by the owner/admin
       allow update: if isSignedIn() && (
         isAdmin() || 
         resource.data.uploaderId == request.auth.uid || 

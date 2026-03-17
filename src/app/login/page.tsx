@@ -46,7 +46,6 @@ function LoginContent() {
         }
 
         if (targetRole === 'admin') {
-          // Check adminRoles OR authorizedAdmins collection
           const adminRoleRef = doc(firestore, 'adminRoles', user.uid);
           const adminSnap = await getDoc(adminRoleRef);
           
@@ -63,7 +62,6 @@ function LoginContent() {
             return;
           }
 
-          // Ensure user is marked as Admin in users collection and has adminRoles entry for security rules
           if (!adminSnap.exists()) {
             await setDoc(adminRoleRef, { email: user.email, activatedAt: new Date().toISOString() });
           }
@@ -72,7 +70,7 @@ function LoginContent() {
             id: user.uid,
             email: user.email,
             fullName: user.displayName || userData?.fullName || 'Institutional Administrator',
-            photoURL: user.photoURL || null,
+            photoURL: user.photoURL || userData?.photoURL || null,
             role: 'Admin',
             status: 'active',
             lastLoginAt: new Date().toISOString(),
@@ -84,7 +82,6 @@ function LoginContent() {
           return;
         }
 
-        // Student Domain Validation
         const userEmail = user.email || '';
         const isAuthorizedDomain = userEmail.endsWith('@neu.edu.ph') || userEmail.includes('test') || userEmail.includes('neu');
 
@@ -127,8 +124,9 @@ function LoginContent() {
           setIsAuthenticating(false);
         }
       } catch (error: any) {
+        console.error("Sync Error:", error);
         setIsAuthenticating(false);
-        toast({ title: "Session Error", description: "Could not synchronize your profile.", variant: "destructive" });
+        toast({ title: "Session Error", description: "Could not synchronize your profile. Please try again.", variant: "destructive" });
       }
     }
 

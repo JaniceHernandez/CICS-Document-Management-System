@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -12,10 +11,7 @@ import {
   Upload, 
   Edit, 
   LogIn, 
-  Users, 
   FileDown,
-  ShieldCheck,
-  MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +57,8 @@ export default function UsageLogPage() {
   };
 
   const filteredLogs = logs?.filter(log => {
-    const userName = users?.find(u => u.id === log.userId)?.fullName || '';
+    const userProfile = users?.find(u => u.id === log.userId);
+    const userName = userProfile?.fullName || '';
     const matchesSearch = log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           userName.toLowerCase().includes(searchQuery.toLowerCase());
     
