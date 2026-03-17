@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { cn } from '@/lib/utils';
@@ -59,12 +59,17 @@ export default function InstitutionalRegistry() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const usersQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'users') : null, [firestore, adminUser]);
   const programsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'programs') : null, [firestore, adminUser]);
@@ -75,8 +80,8 @@ export default function InstitutionalRegistry() {
   const { data: authorizedAdmins } = useCollection(authorizedAdminsQuery);
 
   const filteredUsers = users?.filter(u => {
-    const matchesSearch = u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          u.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   }) || [];
@@ -108,6 +113,7 @@ export default function InstitutionalRegistry() {
     try {
       const emailId = adminEmail.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
       await setDoc(doc(firestore, 'authorizedAdmins', emailId), {
+        id: emailId,
         email: adminEmail.toLowerCase().trim(),
         authorizedBy: adminUser?.uid,
         authorizedAt: new Date().toISOString()
@@ -124,23 +130,43 @@ export default function InstitutionalRegistry() {
     }
   };
 
+  const handleRevokeAdmin = async (id: string) => {
+    if (!firestore || !confirm('Revoke access for this email?')) return;
+    try {
+      await deleteDoc(doc(firestore, 'authorizedAdmins', id));
+      toast({ title: "Clearance Revoked" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Revocation Failed", description: e.message });
+    }
+  };
+
   const getProgramCode = (programIds: string[]) => {
     if (!programIds || programIds.length === 0) return 'N/A';
     return programs?.find(p => p.id === programIds[0])?.shortCode || 'N/A';
   };
+
+  if (!mounted) {
+    return (
+      <main className="p-8">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <header className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-headline font-bold text-primary">Institutional Registry</h1>
+            <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Institutional Registry</h1>
             <p className="text-muted-foreground">Manage students and administrative staff access.</p>
           </div>
           <div className="flex gap-4 items-center">
             <Button 
               onClick={() => setIsAdminDialogOpen(true)}
-              className="bg-secondary text-primary hover:bg-secondary/90 rounded-xl h-11 px-6 font-bold shadow-lg shadow-secondary/10"
+              className="bg-secondary text-primary hover:bg-secondary/90 rounded-xl h-11 px-6 font-bold shadow-lg shadow-secondary/10 transition-all hover:scale-105"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Register Admin
@@ -154,13 +180,13 @@ export default function InstitutionalRegistry() {
               User Directory
             </TabsTrigger>
             <TabsTrigger value="clearances" className="rounded-lg text-xs font-bold px-8 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              Administrative Clearances
+              Administrator Clearances
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="directory" className="space-y-6">
+          <TabsContent value="directory" className="space-y-6 animate-in fade-in-50">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
+              <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-50 rounded-xl">
                     <Users className="h-6 w-6 text-blue-600" />
@@ -171,7 +197,7 @@ export default function InstitutionalRegistry() {
                   </div>
                 </div>
               </Card>
-              <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
+              <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-green-50 rounded-xl">
                     <ShieldCheck className="h-6 w-6 text-green-600" />
@@ -184,7 +210,7 @@ export default function InstitutionalRegistry() {
                   </div>
                 </div>
               </Card>
-              <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
+              <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-amber-50 rounded-xl">
                     <GraduationCap className="h-6 w-6 text-amber-600" />
@@ -206,7 +232,7 @@ export default function InstitutionalRegistry() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                       placeholder="Search by name or email..." 
-                      className="pl-9 h-11 rounded-xl"
+                      className="pl-9 h-11 rounded-xl focus-visible:ring-primary shadow-sm"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -231,27 +257,27 @@ export default function InstitutionalRegistry() {
                   </div>
                 ) : (
                   <Table>
-                    <TableHeader className="bg-zinc-50">
-                      <TableRow>
-                        <TableHead className="font-bold">Member Name</TableHead>
+                    <TableHeader className="bg-zinc-50/50">
+                      <TableRow className="border-none">
+                        <TableHead className="font-bold px-6">Member Name</TableHead>
                         <TableHead className="font-bold">Role</TableHead>
                         <TableHead className="font-bold">Email</TableHead>
                         <TableHead className="font-bold">Program</TableHead>
                         <TableHead className="font-bold">Status</TableHead>
-                        <TableHead className="font-bold text-right">Actions</TableHead>
+                        <TableHead className="font-bold text-right px-6">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.map((member) => (
-                        <TableRow key={member.id} className="hover:bg-zinc-50/50">
-                          <TableCell>
+                        <TableRow key={member.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
+                          <TableCell className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9 bg-primary/10 border-none">
+                              <Avatar className="h-9 w-9 bg-primary/10 border-none transition-transform group-hover:scale-110">
                                 <AvatarFallback className="text-primary font-bold">
-                                  {member.fullName.charAt(0)}
+                                  {member.fullName?.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="font-bold">{member.fullName}</span>
+                              <span className="font-bold text-zinc-900 group-hover:text-primary transition-colors">{member.fullName}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -263,7 +289,7 @@ export default function InstitutionalRegistry() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm text-muted-foreground">{member.email}</span>
+                            <span className="text-sm text-muted-foreground font-medium">{member.email}</span>
                           </TableCell>
                           <TableCell>
                             {member.role === 'Student' ? (
@@ -271,14 +297,14 @@ export default function InstitutionalRegistry() {
                                 {getProgramCode(member.programIds)}
                               </Badge>
                             ) : (
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase">Institutional staff</span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">Institutional staff</span>
                             )}
                           </TableCell>
                           <TableCell>
                             <Badge 
                               variant="secondary" 
                               className={cn(
-                                "border-none font-bold px-3 py-1 uppercase text-[9px] tracking-widest",
+                                "border-none font-bold px-3 py-1 uppercase text-[9px] tracking-widest shadow-sm",
                                 member.status === 'active' 
                                   ? "bg-green-100 text-green-700" 
                                   : "bg-red-100 text-red-700"
@@ -287,14 +313,14 @@ export default function InstitutionalRegistry() {
                               {member.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right px-6">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 transition-colors">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-none p-2">
+                              <DropdownMenuContent align="end" className="rounded-xl shadow-2xl border-none p-2 animate-in fade-in-0 zoom-in-95">
                                 <DropdownMenuItem 
                                   className={cn(
                                     "cursor-pointer font-bold rounded-lg py-2",
@@ -320,7 +346,7 @@ export default function InstitutionalRegistry() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="clearances">
+          <TabsContent value="clearances" className="animate-in fade-in-50">
             <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
               <CardHeader className="p-8 border-b">
                 <CardTitle className="text-xl font-bold flex items-center gap-2">
@@ -331,40 +357,46 @@ export default function InstitutionalRegistry() {
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
-                  <TableHeader className="bg-zinc-50">
-                    <TableRow>
-                      <TableHead className="px-8 font-bold">Authorized Email</TableHead>
+                  <TableHeader className="bg-zinc-50/50">
+                    <TableRow className="border-none">
+                      <TableHead className="px-8 font-bold py-5">Authorized Email</TableHead>
                       <TableHead className="font-bold text-center">Authorized At</TableHead>
                       <TableHead className="px-8 text-right font-bold">Manage</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {authorizedAdmins?.map((auth) => (
-                      <TableRow key={auth.id}>
-                        <TableCell className="px-8 font-bold text-zinc-700">{auth.email}</TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">
+                      <TableRow key={auth.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
+                        <TableCell className="px-8 py-4 font-bold text-zinc-700 group-hover:text-primary transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary/40">
+                              <Mail className="h-4 w-4" />
+                            </div>
+                            {auth.email}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center text-xs text-muted-foreground font-medium">
                           {auth.authorizedAt ? new Date(auth.authorizedAt).toLocaleString() : 'N/A'}
                         </TableCell>
                         <TableCell className="px-8 text-right">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="text-destructive hover:bg-destructive/5 font-bold"
-                            onClick={async () => {
-                              if(confirm('Revoke access for this email?')) {
-                                updateDocumentNonBlocking(doc(firestore, 'authorizedAdmins', auth.id), { status: 'revoked' } as any);
-                                // For simplicity in this demo, we'll actually delete the clearance
-                                const { deleteDoc, doc } = await import('firebase/firestore');
-                                await deleteDoc(doc(firestore, 'authorizedAdmins', auth.id));
-                                toast({ title: "Clearance Revoked" });
-                              }
-                            }}
+                            className="text-destructive hover:bg-destructive/5 font-bold rounded-xl transition-all"
+                            onClick={() => handleRevokeAdmin(auth.id)}
                           >
-                            Revoke
+                            Revoke Clearance
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))}
+                    {!authorizedAdmins?.length && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-20 text-muted-foreground font-medium">
+                          No administrative clearances issued yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -391,7 +423,7 @@ export default function InstitutionalRegistry() {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <Input 
                   placeholder="e.g. staff@neu.edu.ph"
-                  className="pl-11 h-12 rounded-xl border-zinc-200"
+                  className="pl-11 h-12 rounded-xl border-zinc-200 focus-visible:ring-primary shadow-sm"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                 />
@@ -411,7 +443,7 @@ export default function InstitutionalRegistry() {
               disabled={!adminEmail || isSubmittingAdmin}
               className="bg-primary text-white rounded-xl h-11 px-10 font-bold shadow-lg shadow-primary/20"
             >
-              {isSubmittingAdmin ? <Loader2 className="h-4 w-4 animate-spin" /> : "Authorize Staff"}
+              {isSubmittingAdmin ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Authorize Staff"}
             </Button>
           </DialogFooter>
         </DialogContent>

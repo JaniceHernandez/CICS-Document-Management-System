@@ -42,9 +42,11 @@ export default function AdminDashboard() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [timeRange, setTimeRange] = useState('weekly');
 
   useEffect(() => {
+    setMounted(true);
     if (!isUserLoading && !user) {
       router.push('/login?role=admin');
     }
@@ -161,7 +163,7 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   };
 
-  if (isUserLoading || (!user && !isUserLoading)) {
+  if (!mounted || isUserLoading) {
     return (
       <div className="flex flex-1 items-center justify-center p-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -187,7 +189,7 @@ export default function AdminDashboard() {
           <Button 
             variant="outline"
             onClick={exportToCSV}
-            className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
+            className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold shadow-sm transition-all"
           >
             <FileDown className="h-5 w-5 mr-2" />
             Export Overview
@@ -196,10 +198,10 @@ export default function AdminDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat) => (
-            <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+            <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white transition-all hover:shadow-md">
               <CardContent className="p-8 flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-muted-foreground">{stat.label}</p>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
                   <p className="text-4xl font-bold text-primary tabular-nums">{stat.value}</p>
                 </div>
                 <div className={cn("p-4 rounded-2xl", stat.bg)}>
@@ -313,7 +315,7 @@ export default function AdminDashboard() {
                       <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
                         <div className="flex items-center gap-6">
                           <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm",
                             userProfile?.role === 'Admin' ? "bg-primary text-white" : "bg-secondary text-primary"
                           )}>
                             {userProfile?.role === 'Admin' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
@@ -328,7 +330,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2 text-right">
-                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
+                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm">
                             {format(new Date(log.timestamp), 'hh:mm a')}
                           </span>
                           <span className="text-[10px] text-zinc-300 font-medium">

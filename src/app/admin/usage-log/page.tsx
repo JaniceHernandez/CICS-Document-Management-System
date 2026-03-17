@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   History, 
@@ -32,8 +32,13 @@ import { Badge } from '@/components/ui/badge';
 export default function UsageLogPage() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [filter, setFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const logsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -97,6 +102,14 @@ export default function UsageLogPage() {
     document.body.removeChild(link);
   };
 
+  if (!mounted) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-20">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <main className="p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -111,7 +124,7 @@ export default function UsageLogPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Search logs or users..." 
-                className="pl-9 h-11 rounded-xl bg-white border-zinc-200"
+                className="pl-9 h-11 rounded-xl bg-white border-zinc-200 focus-visible:ring-primary shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -132,7 +145,7 @@ export default function UsageLogPage() {
             <Button 
               onClick={exportToCSV}
               disabled={!filteredLogs || filteredLogs.length === 0}
-              className="rounded-xl h-11 px-6 bg-primary text-white font-bold shadow-lg shadow-primary/20"
+              className="rounded-xl h-11 px-6 bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
             >
               <FileDown className="h-4 w-4 mr-2" />
               Export Ledger
@@ -170,7 +183,7 @@ export default function UsageLogPage() {
                     <div key={log.id} className="px-8 py-6 flex items-center justify-between hover:bg-zinc-50 transition-all group">
                       <div className="flex items-center gap-6">
                         <div className="relative">
-                          <Avatar className="h-12 w-12 rounded-2xl border-none bg-primary/5">
+                          <Avatar className="h-12 w-12 rounded-2xl border-none bg-primary/5 transition-transform group-hover:scale-110 shadow-sm">
                             <AvatarFallback className="text-primary font-bold text-sm">
                               {userProfile?.fullName?.charAt(0) || 'U'}
                             </AvatarFallback>
@@ -191,7 +204,7 @@ export default function UsageLogPage() {
                               {userProfile?.fullName || 'System User'}
                             </p>
                             <Badge variant="outline" className={cn(
-                              "border-none text-[9px] font-bold uppercase tracking-widest px-2 py-0.5",
+                              "border-none text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-sm",
                               userProfile?.role === 'Admin' ? "bg-primary text-white" : "bg-zinc-100 text-zinc-600"
                             )}>
                               {userProfile?.role || 'Guest'}
@@ -203,7 +216,7 @@ export default function UsageLogPage() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 text-right">
-                        <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
+                        <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm">
                           {format(new Date(log.timestamp), 'hh:mm:ss a')}
                         </span>
                         <span className="text-[10px] text-zinc-300 font-bold uppercase">

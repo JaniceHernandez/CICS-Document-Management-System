@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -44,6 +44,7 @@ export default function AdminSettings() {
   const firestore = useFirestore();
   const { user: adminUser } = useUser();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
 
   const [newCat, setNewCat] = useState('');
   const [newProgName, setNewProgName] = useState('');
@@ -54,6 +55,10 @@ export default function AdminSettings() {
   const [editName, setEditName] = useState('');
   const [editCode, setEditCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const categoriesQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'categories') : null, [firestore, adminUser]);
   const programsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'programs') : null, [firestore, adminUser]);
@@ -180,6 +185,16 @@ export default function AdminSettings() {
     }
   };
 
+  if (!mounted) {
+    return (
+      <main className="p-8">
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -209,7 +224,7 @@ export default function AdminSettings() {
                     value={newCat}
                     onChange={(e) => setNewCat(e.target.value)}
                   />
-                  <Button onClick={addCategory} disabled={!newCat || isProcessing} className="rounded-xl h-10 bg-primary font-bold">
+                  <Button onClick={addCategory} disabled={!newCat || isProcessing} className="rounded-xl h-10 bg-primary font-bold transition-all hover:scale-105">
                     <Plus className="h-4 w-4 mr-2" /> Add
                   </Button>
                 </div>
@@ -226,10 +241,10 @@ export default function AdminSettings() {
                 </TableHeader>
                 <TableBody>
                   {categories?.map((cat) => (
-                    <TableRow key={cat.id} className="hover:bg-zinc-50/50">
-                      <TableCell className="px-6 font-bold text-zinc-700">{cat.name}</TableCell>
+                    <TableRow key={cat.id} className="hover:bg-zinc-50/50 group transition-colors">
+                      <TableCell className="px-6 font-bold text-zinc-700 group-hover:text-primary transition-colors">{cat.name}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 font-bold">
+                        <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 font-bold border-none">
                           {documents?.filter(d => d.categoryId === cat.id).length || 0}
                         </Badge>
                       </TableCell>
@@ -264,7 +279,7 @@ export default function AdminSettings() {
                 <div className="flex gap-2">
                   <Input placeholder="Program Name" className="w-48 h-10 rounded-xl" value={newProgName} onChange={(e) => setNewProgName(e.target.value)} />
                   <Input placeholder="Code" className="w-24 h-10 rounded-xl" value={newProgCode} onChange={(e) => setNewProgCode(e.target.value)} />
-                  <Button onClick={addProgram} disabled={!newProgName || !newProgCode || isProcessing} className="rounded-xl h-10 bg-primary font-bold">
+                  <Button onClick={addProgram} disabled={!newProgName || !newProgCode || isProcessing} className="rounded-xl h-10 bg-primary font-bold transition-all hover:scale-105">
                     Add Program
                   </Button>
                 </div>
@@ -281,11 +296,11 @@ export default function AdminSettings() {
                 </TableHeader>
                 <TableBody>
                   {programs?.sort((a,b) => a.shortCode.localeCompare(b.shortCode)).map((prog) => (
-                    <TableRow key={prog.id} className="hover:bg-zinc-50/50">
+                    <TableRow key={prog.id} className="hover:bg-zinc-50/50 group transition-colors">
                       <TableCell className="px-6">
-                        <Badge className="bg-primary/5 text-primary border-none font-bold uppercase">{prog.shortCode}</Badge>
+                        <Badge className="bg-primary/5 text-primary border-none font-bold uppercase transition-all group-hover:bg-primary group-hover:text-white">{prog.shortCode}</Badge>
                       </TableCell>
-                      <TableCell className="font-bold text-zinc-700">{prog.name}</TableCell>
+                      <TableCell className="font-bold text-zinc-700 group-hover:text-primary transition-colors">{prog.name}</TableCell>
                       <TableCell className="px-6 text-right space-x-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-primary" onClick={() => handleEdit(prog, 'program')}>
                           <Edit2 className="h-3.5 w-3.5" />
@@ -334,7 +349,7 @@ export default function AdminSettings() {
                           onCheckedChange={() => togglePeriod(period)}
                         />
                         <Badge className={cn(
-                          "border-none text-[9px] font-bold uppercase tracking-widest px-2 py-0.5",
+                          "border-none text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 shadow-sm",
                           period.isEnabled ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
                         )}>
                           {period.isEnabled ? 'Enabled' : 'Disabled'}
@@ -351,28 +366,30 @@ export default function AdminSettings() {
         <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
           <DialogContent className="max-w-md rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">
-              <DialogTitle className="text-2xl font-bold font-headline uppercase">Update {editType}</DialogTitle>
+              <DialogTitle className="text-2xl font-bold font-headline uppercase tracking-tight">Update {editType}</DialogTitle>
               <DialogDescription className="text-white/70">Modify institutional entry details.</DialogDescription>
             </DialogHeader>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Name</Label>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-12 rounded-xl" />
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-12 rounded-xl border-zinc-200 focus-visible:ring-primary shadow-sm" />
               </div>
               {editType === 'program' && (
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Short Code</Label>
-                  <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} className="h-12 rounded-xl" />
+                  <Input value={editCode} onChange={(e) => setEditCode(e.target.value)} className="h-12 rounded-xl border-zinc-200 focus-visible:ring-primary shadow-sm" />
                 </div>
               )}
               <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3 text-xs text-amber-700">
                 <AlertCircle className="h-5 w-5 shrink-0" />
-                <p>Changes will propagate across all linked documents and user profiles instantly.</p>
+                <p className="font-medium">Changes will propagate across all linked documents and user profiles instantly.</p>
               </div>
             </div>
             <DialogFooter className="p-8 bg-zinc-50 border-t flex items-center justify-between">
-              <Button variant="ghost" onClick={() => setEditItem(null)}>Cancel</Button>
-              <Button onClick={saveEdit} disabled={isProcessing || !editName} className="bg-primary text-white rounded-xl px-8 font-bold">{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}</Button>
+              <Button variant="ghost" onClick={() => setEditItem(null)} className="rounded-xl px-6 font-bold text-zinc-500">Cancel</Button>
+              <Button onClick={saveEdit} disabled={isProcessing || !editName} className="bg-primary text-white rounded-xl px-8 font-bold shadow-lg shadow-primary/20">
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Save Changes"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
