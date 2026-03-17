@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -10,7 +11,9 @@ import {
   Trash2, 
   Edit2, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Calendar,
+  Settings2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +22,15 @@ import { collection, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestor
 import { Badge } from '@/components/ui/badge';
 import { logActivity } from '@/lib/activity-logging';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from '@/components/ui/switch';
 
 export default function AdminSettings() {
   const firestore = useFirestore();
@@ -38,7 +51,7 @@ export default function AdminSettings() {
   const [newProgCode, setNewProgCode] = useState('');
 
   const [editItem, setEditItem] = useState<any>(null);
-  const [editType, setEditItemType] = useState<'category' | 'program' | null>(null);
+  const [editType, setEditItemType] = useState<'category' | 'program' | 'period' | null>(null);
   const [editName, setEditName] = useState('');
   const [editCode, setEditCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,11 +60,13 @@ export default function AdminSettings() {
   const programsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'programs') : null, [firestore, adminUser]);
   const documentsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'documents') : null, [firestore, adminUser]);
   const usersQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'users') : null, [firestore, adminUser]);
+  const periodsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'inquiryPeriods') : null, [firestore, adminUser]);
 
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
   const { data: documents } = useCollection(documentsQuery);
   const { data: users } = useCollection(usersQuery);
+  const { data: periods } = useCollection(periodsQuery);
 
   const addCategory = async () => {
     if (!firestore || !adminUser || !newCat) return;
@@ -93,6 +108,20 @@ export default function AdminSettings() {
     }
   };
 
+  const togglePeriod = async (period: any) => {
+    if (!firestore || !adminUser) return;
+    try {
+      await updateDoc(doc(firestore, 'inquiryPeriods', period.id), {
+        isEnabled: !period.isEnabled,
+        updatedAt: new Date().toISOString()
+      });
+      logActivity(firestore, adminUser.uid, 'INQUIRY_PERIOD_UPDATE', `Toggled inquiry period: ${period.name}`);
+      toast({ title: "Setting Updated" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
   const handleEdit = (item: any, type: 'category' | 'program') => {
     setEditItem(item);
     setEditItemType(type);
@@ -113,7 +142,7 @@ export default function AdminSettings() {
         updateData.shortCode = editCode;
       }
       await updateDoc(docRef, updateData);
-      logActivity(firestore, adminUser.uid, editType === 'category' ? 'DOCUMENT_EDIT' : 'DOCUMENT_EDIT', `Updated ${editType}: ${editName}`);
+      logActivity(firestore, adminUser.uid, 'DOCUMENT_EDIT', `Updated ${editType}: ${editName}`);
       toast({ title: `${editType.charAt(0).toUpperCase() + editType.slice(1)} Updated` });
       setEditItem(null);
     } catch (e: any) {
@@ -127,14 +156,10 @@ export default function AdminSettings() {
     if (!firestore || !adminUser) return;
     const inUse = documents?.filter(d => d.categoryId === cat.id);
     if (inUse && inUse.length > 0) {
-      toast({
-        title: "Access Denied",
-        description: `This category is currently linked to ${inUse.length} documents.`,
-        variant: "destructive"
-      });
+      toast({ title: "Access Denied", description: "Category is linked to active documents.", variant: "destructive" });
       return;
     }
-    if (confirm(`Are you sure you want to remove the category "${cat.name}"?`)) {
+    if (confirm(`Remove the category "${cat.name}"?`)) {
       await deleteDoc(doc(firestore, 'categories', cat.id));
       logActivity(firestore, adminUser.uid, 'DOCUMENT_DELETE', `Removed category: ${cat.name}`);
       toast({ title: "Category Removed" });
@@ -158,85 +183,166 @@ export default function AdminSettings() {
 
   return (
     <main className="p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         <header>
           <h1 className="text-3xl font-headline font-bold text-primary">System Settings</h1>
-          <p className="text-muted-foreground">Manage organizational structure and data classifications.</p>
+          <p className="text-muted-foreground">Manage institutional data structures and global configurations.</p>
         </header>
 
-        <div className="grid grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 gap-10">
+          {/* Document Classifications Table */}
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
-            <CardHeader className="border-b bg-zinc-50/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <FolderTree className="h-5 w-5 text-primary" />
+            <CardHeader className="bg-zinc-50/50 border-b p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <FolderTree className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold">Document Classifications</CardTitle>
+                    <CardDescription>Primary categories used for sorting library records.</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl font-bold">Document Classifications</CardTitle>
-                  <CardDescription>Primary categories used for sorting institutional records.</CardDescription>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="New category..." 
+                    className="w-64 h-10 rounded-xl"
+                    value={newCat}
+                    onChange={(e) => setNewCat(e.target.value)}
+                  />
+                  <Button onClick={addCategory} disabled={!newCat || isProcessing} className="rounded-xl h-10 bg-primary font-bold">
+                    <Plus className="h-4 w-4 mr-2" /> Add
+                  </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {categories?.map((cat) => (
-                  <div key={cat.id} className="group p-4 bg-zinc-50 rounded-2xl border border-zinc-100 flex items-center justify-between hover:bg-white hover:shadow-md transition-all">
-                    <span className="font-bold text-sm text-zinc-700">{cat.name}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleEdit(cat, 'category')}><Edit2 className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => deleteCategory(cat)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-4 items-end bg-zinc-50/50 p-6 rounded-2xl border border-dashed border-zinc-200">
-                <div className="flex-1 space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">New Category Name</Label>
-                  <Input placeholder="e.g. Syllabi, Forms" value={newCat} onChange={(e) => setNewCat(e.target.value)} className="rounded-xl bg-white" />
-                </div>
-                <Button onClick={addCategory} disabled={!newCat || isProcessing} className="rounded-xl h-11 bg-primary text-white font-bold"><Plus className="h-4 w-4 mr-2" /> Add</Button>
-              </div>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-zinc-50/30">
+                  <TableRow>
+                    <TableHead className="px-6 font-bold text-xs uppercase tracking-widest">Classification Name</TableHead>
+                    <TableHead className="font-bold text-xs uppercase tracking-widest text-center">Records Linked</TableHead>
+                    <TableHead className="px-6 text-right font-bold text-xs uppercase tracking-widest">Manage</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categories?.map((cat) => (
+                    <TableRow key={cat.id} className="hover:bg-zinc-50/50">
+                      <TableCell className="px-6 font-bold text-zinc-700">{cat.name}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 font-bold">
+                          {documents?.filter(d => d.categoryId === cat.id).length || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 text-right space-x-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-primary" onClick={() => handleEdit(cat, 'category')}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-destructive" onClick={() => deleteCategory(cat)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
+          {/* Academic Programs Table */}
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
-            <CardHeader className="border-b bg-zinc-50/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <GraduationCap className="h-5 w-5 text-primary" />
+            <CardHeader className="bg-zinc-50/50 border-b p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <GraduationCap className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold">Academic Programs</CardTitle>
+                    <CardDescription>Managed undergraduate degrees within the College.</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl font-bold">Academic Programs</CardTitle>
-                  <CardDescription>Managed undergraduate degrees within the College.</CardDescription>
+                <div className="flex gap-2">
+                  <Input placeholder="Program Name" className="w-48 h-10 rounded-xl" value={newProgName} onChange={(e) => setNewProgName(e.target.value)} />
+                  <Input placeholder="Code" className="w-24 h-10 rounded-xl" value={newProgCode} onChange={(e) => setNewProgCode(e.target.value)} />
+                  <Button onClick={addProgram} disabled={!newProgName || !newProgCode || isProcessing} className="rounded-xl h-10 bg-primary font-bold">
+                    Add Program
+                  </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {programs?.map((prog) => (
-                  <div key={prog.id} className="group p-5 bg-zinc-50 rounded-2xl border border-zinc-100 flex items-start justify-between hover:bg-white hover:shadow-md transition-all">
-                    <div>
-                      <Badge className="mb-2 bg-primary/5 text-primary border-none">{prog.shortCode}</Badge>
-                      <p className="font-bold text-zinc-900 leading-tight">{prog.name}</p>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-zinc-50/30">
+                  <TableRow>
+                    <TableHead className="px-6 font-bold text-xs uppercase tracking-widest">Code</TableHead>
+                    <TableHead className="font-bold text-xs uppercase tracking-widest">Full Degree Program Name</TableHead>
+                    <TableHead className="px-6 text-right font-bold text-xs uppercase tracking-widest">Manage</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {programs?.sort((a,b) => a.shortCode.localeCompare(b.shortCode)).map((prog) => (
+                    <TableRow key={prog.id} className="hover:bg-zinc-50/50">
+                      <TableCell className="px-6">
+                        <Badge className="bg-primary/5 text-primary border-none font-bold uppercase">{prog.shortCode}</Badge>
+                      </TableCell>
+                      <TableCell className="font-bold text-zinc-700">{prog.name}</TableCell>
+                      <TableCell className="px-6 text-right space-x-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-primary" onClick={() => handleEdit(prog, 'program')}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-destructive" onClick={() => deleteProgram(prog)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Operational Settings */}
+          <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+            <CardHeader className="bg-zinc-50/50 border-b p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Settings2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold">System Operations</CardTitle>
+                  <CardDescription>Global toggles and inquiry period configurations.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm">
+                      <Calendar className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(prog, 'program')}><Edit2 className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteProgram(prog)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <div>
+                      <p className="font-bold text-zinc-900">Current Semester Inquiry Period</p>
+                      <p className="text-sm text-muted-foreground font-medium">Allow students to submit new support inquiries.</p>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-50/50 p-6 rounded-2xl border border-dashed border-zinc-200">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Full Program Name</Label>
-                  <Input value={newProgName} onChange={(e) => setNewProgName(e.target.value)} className="rounded-xl bg-white" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Short Code</Label>
-                  <Input value={newProgCode} onChange={(e) => setNewProgCode(e.target.value)} className="rounded-xl bg-white" />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={addProgram} disabled={!newProgName || !newProgCode || isProcessing} className="w-full h-11 bg-primary text-white font-bold">{isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Register Program"}</Button>
+                  <div className="flex items-center gap-4">
+                    {periods?.map((period) => (
+                      <div key={period.id} className="flex items-center gap-3">
+                        <Switch 
+                          checked={period.isEnabled} 
+                          onCheckedChange={() => togglePeriod(period)}
+                        />
+                        <Badge className={cn(
+                          "border-none text-[9px] font-bold uppercase tracking-widest px-2 py-0.5",
+                          period.isEnabled ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
+                        )}>
+                          {period.isEnabled ? 'Enabled' : 'Disabled'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -84,7 +84,7 @@ export default function AdminDashboard() {
 
   const studentCount = users?.filter(u => u.role === 'Student').length || 0;
   
-  // Refined: Only count documents posted by admin or in cics-docs storage path
+  // Refined: Only count documents explicitly marked as institutional or in admin storage path
   const docCount = allDocs?.filter(d => 
     d.type === 'institutional' || 
     d.fileUrl?.includes('cics-docs')
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
     if (!logs) return;
     
     const summary = [
-      ['System Overview Summary'],
+      ['Institutional Overview Summary'],
       [''],
       ['Registered Students', studentCount],
       ['Documents Hosted', docCount],
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `institutional_report_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute('download', `institutional_dashboard_report_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -192,7 +192,7 @@ export default function AdminDashboard() {
             className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
           >
             <FileDown className="h-5 w-5 mr-2" />
-            Export Report
+            Export Overview
           </Button>
         </header>
 
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="h-[400px] p-8">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryStats} margin={{ bottom: 40 }}>
+                <BarChart data={categoryStats} margin={{ bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis 
                     dataKey="name" 
@@ -273,6 +273,7 @@ export default function AdminDashboard() {
                     interval={0}
                     angle={-45}
                     textAnchor="end"
+                    height={60}
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 10}} />
                   <Tooltip 
@@ -295,20 +296,20 @@ export default function AdminDashboard() {
             <div>
               <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
                 <Activity className="h-6 w-6" />
-                Activity History
+                Recent Activity
               </CardTitle>
-              <CardDescription>Recent audit ledger of user and system interactions.</CardDescription>
+              <CardDescription>Latest interactions within the institutional system.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[400px]">
               {logsLoading ? (
                 <div className="p-20 flex justify-center">
                   <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
               ) : (
                 <div className="divide-y divide-zinc-50">
-                  {logs?.map((log) => {
+                  {logs?.slice(0, 50).map((log) => {
                     const userProfile = users?.find(u => u.id === log.userId);
                     return (
                       <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
@@ -333,7 +334,7 @@ export default function AdminDashboard() {
                             {format(new Date(log.timestamp), 'hh:mm a')}
                           </span>
                           <span className="text-[10px] text-zinc-300 font-medium">
-                            {format(new Date(log.timestamp), 'MMM dd, yyyy')}
+                            {format(new Date(log.timestamp), 'MMM dd')}
                           </span>
                         </div>
                       </div>

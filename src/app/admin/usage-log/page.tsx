@@ -13,9 +13,11 @@ import {
   Edit, 
   LogIn, 
   Users, 
+  FileDown,
   ShieldCheck,
   MoreVertical
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Select, 
@@ -59,13 +61,44 @@ export default function UsageLogPage() {
   };
 
   const filteredLogs = logs?.filter(log => {
+    const userName = users?.find(u => u.id === log.userId)?.fullName || '';
     const matchesSearch = log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          users?.find(u => u.id === log.userId)?.fullName?.toLowerCase().includes(searchQuery.toLowerCase());
+                          userName.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (filter === 'ALL') return matchesSearch;
     if (filter === 'MODIFICATIONS') return matchesSearch && (log.actionType === 'DOCUMENT_EDIT' || log.actionType === 'DOCUMENT_DELETE');
     return matchesSearch && log.actionType === filter;
   });
+
+  const exportToCSV = () => {
+    if (!filteredLogs) return;
+    
+    const headers = ['Action Description', 'User Name', 'Action Type', 'Timestamp'];
+    const rows = filteredLogs.map(log => {
+      const userProfile = users?.find(u => u.id === log.userId);
+      return [
+        `"${log.details.replace(/"/g, '""')}"`,
+        `"${(userProfile?.fullName || 'System User').replace(/"/g, '""')}"`,
+        log.actionType,
+        log.timestamp
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `institutional_activity_ledger_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <main className="p-8">
@@ -99,6 +132,14 @@ export default function UsageLogPage() {
                 <SelectItem value="MODIFICATIONS">Modifications</SelectItem>
               </SelectContent>
             </Select>
+            <Button 
+              onClick={exportToCSV}
+              disabled={!filteredLogs || filteredLogs.length === 0}
+              className="rounded-xl h-11 px-6 bg-primary text-white font-bold shadow-lg shadow-primary/20"
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Export Ledger
+            </Button>
           </div>
         </header>
 
@@ -110,7 +151,7 @@ export default function UsageLogPage() {
                   <History className="h-6 w-6 text-primary" />
                   Audit Ledger
                 </CardTitle>
-                <CardDescription>Displaying {filteredLogs?.length || 0} activity records</CardDescription>
+                <CardDescription>Displaying {filteredLogs?.length || 0} filtered activity records</CardDescription>
               </div>
             </div>
           </CardHeader>
