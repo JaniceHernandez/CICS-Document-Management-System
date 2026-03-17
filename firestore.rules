@@ -27,7 +27,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get, list: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      // Admins need to be able to block/unblock users (update status)
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
