@@ -186,7 +186,7 @@ function LoginContent() {
             {logoImage && <Image src={logoImage.imageUrl} alt="NEU Logo" width={100} height={100} className="object-contain" />}
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">CICS DOCUMENT MANAGEMENT SYSTEM</h1>
+            <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">DOCUMENT MANAGEMENT SYSTEM</h1>
             <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[12px]">College of Informatics and Computing Studies</p>
           </div>
         </div>
@@ -244,7 +244,7 @@ function LoginContent() {
               {targetRole === 'student' && (
                 <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-4">
                   <Globe className="h-5 w-5 text-blue-600 shrink-0" />
-                  <p className="text-xs text-blue-700 font-medium leading-relaxed">Access is restricted to active @neu.edu.ph domain accounts.</p>
+                  <p className="text-xs text-blue-700 font-medium leading-relaxed">Access is restricted to active @neu.edu.ph domain accounts. Please ensure you are logged into your institutional Google account.</p>
                 </div>
               )}
             </div>
