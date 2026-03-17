@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   BarChart, 
@@ -160,7 +158,7 @@ export default function AdminDashboard() {
 
   if (isUserLoading || (!user && !isUserLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="flex flex-1 items-center justify-center p-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
       </div>
     );
@@ -174,173 +172,169 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-zinc-50/50">
-      <SidebarNav role="admin" />
-      
-      <main className="flex-1 ml-64 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <header className="flex justify-between items-end">
-            <div>
-              <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
-              <p className="text-muted-foreground mt-1 text-lg">General activity and engagement monitoring.</p>
-            </div>
-            <Button 
-              variant="outline"
-              onClick={exportToCSV}
-              className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
-            >
-              <FileDown className="h-5 w-5 mr-2" />
-              Export Report
-            </Button>
-          </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat) => (
-              <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-                <CardContent className="p-8 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-muted-foreground">{stat.label}</p>
-                    <p className="text-4xl font-bold text-primary tabular-nums">{stat.value}</p>
-                  </div>
-                  <div className={cn("p-4 rounded-2xl", stat.bg)}>
-                    <stat.icon className={cn("h-8 w-8", stat.color)} />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    <main className="p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex justify-between items-end">
+          <div>
+            <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">System Overview</h1>
+            <p className="text-muted-foreground mt-1 text-lg">General activity and engagement monitoring.</p>
           </div>
+          <Button 
+            variant="outline"
+            onClick={exportToCSV}
+            className="rounded-full h-12 px-6 border-zinc-200 hover:bg-zinc-100 text-zinc-600 font-bold"
+          >
+            <FileDown className="h-5 w-5 mr-2" />
+            Export Report
+          </Button>
+        </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
-                    <TrendingUp className="h-6 w-6" />
-                    Activity Trends
-                  </CardTitle>
-                  <CardDescription>Daily logins and document downloads over time.</CardDescription>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat) => (
+            <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+              <CardContent className="p-8 flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-muted-foreground">{stat.label}</p>
+                  <p className="text-4xl font-bold text-primary tabular-nums">{stat.value}</p>
                 </div>
-                <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
-                  <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
-                    <TabsTrigger value="weekly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Weekly</TabsTrigger>
-                    <TabsTrigger value="monthly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Monthly</TabsTrigger>
-                    <TabsTrigger value="quarterly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Quarterly</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardHeader>
-              <CardContent className="h-[400px] p-8">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fill: '#888', fontSize: 11}} 
-                      dy={10}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-                    />
-                    <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
-                    <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Logins" />
-                    <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Downloads" />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className={cn("p-4 rounded-2xl", stat.bg)}>
+                  <stat.icon className={cn("h-8 w-8", stat.color)} />
+                </div>
               </CardContent>
             </Card>
+          ))}
+        </div>
 
-            <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardHeader className="p-8 border-b border-zinc-50">
-                <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
-                  <MousePointer2 className="h-6 w-6" />
-                  Downloads By Classification
-                </CardTitle>
-                <CardDescription>Total downloads aggregated by document category.</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px] p-8">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryStats}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{fill: '#888', fontSize: 10}} 
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 10}} />
-                    <Tooltip 
-                      cursor={{fill: 'transparent'}}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
-                    />
-                    <Bar dataKey="downloads" radius={[10, 10, 0, 0]}>
-                      {categoryStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden bg-white">
             <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
-                  <Activity className="h-6 w-6" />
-                  Activity History
+                  <TrendingUp className="h-6 w-6" />
+                  Activity Trends
                 </CardTitle>
-                <CardDescription>Audit ledger of user and system interactions.</CardDescription>
+                <CardDescription>Daily logins and document downloads over time.</CardDescription>
               </div>
+              <Tabs value={timeRange} onValueChange={setTimeRange} className="w-auto">
+                <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-10">
+                  <TabsTrigger value="weekly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Weekly</TabsTrigger>
+                  <TabsTrigger value="monthly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Monthly</TabsTrigger>
+                  <TabsTrigger value="quarterly" className="rounded-lg text-xs font-bold px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm">Quarterly</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[500px]">
-                {logsLoading ? (
-                  <div className="p-20 flex justify-center">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                  </div>
-                ) : (
-                  <div className="divide-y divide-zinc-50">
-                    {logs?.map((log) => {
-                      const userProfile = users?.find(u => u.id === log.userId);
-                      return (
-                        <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
-                          <div className="flex items-center gap-6">
-                            <div className={cn(
-                              "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                              userProfile?.role === 'Admin' ? "bg-primary text-white" : "bg-secondary text-primary"
-                            )}>
-                              {userProfile?.role === 'Admin' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                                {userProfile?.fullName || 'System User'}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                                {log.details}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 text-right">
-                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
-                              {format(new Date(log.timestamp), 'hh:mm a')}
-                            </span>
-                            <span className="text-[10px] text-zinc-300 font-medium">
-                              {format(new Date(log.timestamp), 'MMM dd, yyyy')}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </ScrollArea>
+            <CardContent className="h-[400px] p-8">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#888', fontSize: 11}} 
+                    dy={10}
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                  />
+                  <Legend verticalAlign="top" align="right" height={36} iconType="circle" />
+                  <Line type="monotone" dataKey="logins" stroke="#003366" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Logins" />
+                  <Line type="monotone" dataKey="downloads" stroke="#FFD700" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} name="Downloads" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="p-8 border-b border-zinc-50">
+              <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
+                <MousePointer2 className="h-6 w-6" />
+                Downloads By Classification
+              </CardTitle>
+              <CardDescription>Total downloads aggregated by document category.</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[400px] p-8">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryStats}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#888', fontSize: 10}} 
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 10}} />
+                  <Tooltip 
+                    cursor={{fill: 'transparent'}}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="downloads" radius={[10, 10, 0, 0]}>
+                    {categoryStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
-      </main>
-    </div>
+
+        <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="font-headline font-bold text-xl flex items-center gap-3 text-primary">
+                <Activity className="h-6 w-6" />
+                Activity History
+              </CardTitle>
+              <CardDescription>Audit ledger of user and system interactions.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[500px]">
+              {logsLoading ? (
+                <div className="p-20 flex justify-center">
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                </div>
+              ) : (
+                <div className="divide-y divide-zinc-50">
+                  {logs?.map((log) => {
+                    const userProfile = users?.find(u => u.id === log.userId);
+                    return (
+                      <div key={log.id} className="px-8 py-5 flex items-center justify-between hover:bg-zinc-50 transition-all group">
+                        <div className="flex items-center gap-6">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
+                            userProfile?.role === 'Admin' ? "bg-primary text-white" : "bg-secondary text-primary"
+                          )}>
+                            {userProfile?.role === 'Admin' ? <ShieldCheck className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-zinc-900 group-hover:text-primary transition-colors">
+                              {userProfile?.fullName || 'System User'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1 font-medium">
+                              {log.details}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 text-right">
+                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full uppercase tracking-tighter">
+                            {format(new Date(log.timestamp), 'hh:mm a')}
+                          </span>
+                          <span className="text-[10px] text-zinc-300 font-medium">
+                            {format(new Date(log.timestamp), 'MMM dd, yyyy')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }

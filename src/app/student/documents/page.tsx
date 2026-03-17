@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -123,7 +121,7 @@ export default function StudentDocuments() {
 
   if (isUserLoading || isProfileLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="flex flex-1 items-center justify-center p-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
       </div>
     );
@@ -134,139 +132,135 @@ export default function StudentDocuments() {
     : 'All Programs';
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <SidebarNav role="student" />
-      
-      <main className="flex-1 ml-64 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-headline font-bold text-primary">Institutional Library</h1>
-              <p className="text-muted-foreground">Access official resources for {studentProgramCode}.</p>
-            </div>
-            <div className="flex gap-4 items-center">
-              {userProfile?.programIds?.length > 0 && (
-                <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                    {studentProgramCode} Portal
-                  </span>
-                </div>
-              )}
-            </div>
-          </header>
-
-          <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="md:col-span-2 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search documents..." 
-                    className="pl-10 h-11 rounded-xl bg-background border-zinc-200"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories?.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
-                    <div className="flex items-center gap-2">
-                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      <SelectValue placeholder="Sort By" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recent">Recently Uploaded</SelectItem>
-                    <SelectItem value="downloads">Most Downloaded</SelectItem>
-                    <SelectItem value="alpha">Alphabetical</SelectItem>
-                  </SelectContent>
-                </Select>
+    <main className="p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-headline font-bold text-primary">Institutional Library</h1>
+            <p className="text-muted-foreground">Access official resources for {studentProgramCode}.</p>
+          </div>
+          <div className="flex gap-4 items-center">
+            {userProfile?.programIds?.length > 0 && (
+              <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                  {studentProgramCode} Portal
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
+        </header>
 
-          {isDocsLoading ? (
-            <div className="flex flex-col items-center justify-center py-32">
-              <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-              <p className="text-muted-foreground font-medium">Loading library collections...</p>
-            </div>
-          ) : sortedDocs && sortedDocs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {sortedDocs.map((docData) => (
-                <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
-                  <CardHeader className="p-6 pb-2">
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
-                        {getCategoryName(docData.categoryId)}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
-                      {docData.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-2">
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Download className="h-4 w-4" />
-                        {docData.downloadCount || 0}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        PDF
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
-                        onClick={() => setPreviewDoc(docData)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Button>
-                      <Button 
-                        className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
-                        onClick={() => handleDownload(docData)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-40 text-center">
-              <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
-                <Ghost className="h-10 w-10 text-zinc-300" />
+        <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                  placeholder="Search documents..." 
+                  className="pl-10 h-11 rounded-xl bg-background border-zinc-200"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-              <h3 className="text-xl font-bold text-zinc-900">No resources found</h3>
-              <p className="text-muted-foreground max-w-sm mt-2">
-                There are currently no documents matching your program ({studentProgramCode}) or search criteria.
-              </p>
-              <Button 
-                variant="link" 
-                onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
-                className="mt-4 text-primary font-bold"
-              >
-                Clear all filters
-              </Button>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories?.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="h-11 rounded-xl bg-background border-zinc-200">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Sort By" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Recently Uploaded</SelectItem>
+                  <SelectItem value="downloads">Most Downloaded</SelectItem>
+                  <SelectItem value="alpha">Alphabetical</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </div>
-      </main>
+          </CardContent>
+        </Card>
+
+        {isDocsLoading ? (
+          <div className="flex flex-col items-center justify-center py-32">
+            <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground font-medium">Loading library collections...</p>
+          </div>
+        ) : sortedDocs && sortedDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {sortedDocs.map((docData) => (
+              <Card key={docData.id} className="border-none shadow-md rounded-2xl group overflow-hidden hover:shadow-xl transition-all bg-white">
+                <CardHeader className="p-6 pb-2">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge variant="secondary" className="bg-primary/5 text-primary border-none rounded-full px-3">
+                      {getCategoryName(docData.categoryId)}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl font-headline font-bold line-clamp-1 group-hover:text-primary transition-colors">
+                    {docData.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 pt-2">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-1">
+                      <Download className="h-4 w-4" />
+                      {docData.downloadCount || 0}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-4 w-4" />
+                      PDF
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="rounded-full flex items-center gap-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all"
+                      onClick={() => setPreviewDoc(docData)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </Button>
+                    <Button 
+                      className="rounded-full bg-secondary text-primary hover:bg-secondary/90 font-bold shadow-sm"
+                      onClick={() => handleDownload(docData)}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-40 text-center">
+            <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
+              <Ghost className="h-10 w-10 text-zinc-300" />
+            </div>
+            <h3 className="text-xl font-bold text-zinc-900">No resources found</h3>
+            <p className="text-muted-foreground max-w-sm mt-2">
+              There are currently no documents matching your program ({studentProgramCode}) or search criteria.
+            </p>
+            <Button 
+              variant="link" 
+              onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
+              className="mt-4 text-primary font-bold"
+            >
+              Clear all filters
+            </Button>
+          </div>
+        )}
+      </div>
 
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
@@ -277,7 +271,7 @@ export default function StudentDocuments() {
                 Uploaded on {previewDoc && new Date(previewDoc.uploadDate || previewDoc.createdAt).toLocaleDateString()}
               </DialogDescription>
             </div>
-            <Button variant="ghost" className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" onClick={() => setPreviewDoc(null)}>
+            <Button variant="ghost" className="absolute right-4 top-14 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" onClick={() => setPreviewDoc(null)}>
               <X className="h-6 w-6" />
             </Button>
           </DialogHeader>
@@ -334,6 +328,6 @@ export default function StudentDocuments() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   );
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -19,13 +18,32 @@ import {
   ShieldCheck,
   Loader2,
   GraduationCap,
-  Settings
+  Settings,
+  ChevronUp,
+  User2
 } from 'lucide-react';
 import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SidebarNavProps {
   role: 'admin' | 'student';
@@ -38,7 +56,6 @@ const adminLinks = [
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/students', label: 'Institutional Registry', icon: Users },
   { href: '/admin/inquiries', label: 'Support Inquiries', icon: MessageSquare },
-  { href: '/admin/settings', label: 'System Settings', icon: Settings },
 ];
 
 const studentLinks = [
@@ -74,91 +91,115 @@ export function SidebarNav({ role }: SidebarNavProps) {
   const displayPhoto = profile?.photoURL || user?.photoURL;
 
   return (
-    <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-10 group cursor-pointer" onClick={() => router.push('/')}>
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-black/20 p-2 group-hover:scale-105 transition-transform">
+    <Sidebar collapsible="icon" className="border-r border-white/10">
+      <SidebarHeader className="bg-primary text-white p-4">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg p-1.5 shrink-0">
             {logoImage && (
               <Image 
                 src={logoImage.imageUrl} 
                 alt="NEU Logo" 
-                width={40} 
-                height={40} 
+                width={32} 
+                height={32} 
                 className="object-contain"
               />
             )}
           </div>
-          <div>
-            <span className="text-[10px] font-bold tracking-[0.2em] text-white/50 block uppercase">NEU CICS</span>
+          <div className="flex flex-col truncate group-data-[collapsible=icon]:hidden">
+            <span className="text-[9px] font-bold tracking-[0.2em] text-white/50 block uppercase">NEU CICS</span>
             <span className="text-xs font-headline font-bold tracking-tight leading-tight uppercase block">
               DMS Portal
             </span>
           </div>
         </div>
+      </SidebarHeader>
 
-        <nav className="space-y-1.5">
+      <SidebarContent className="bg-primary text-white pt-6">
+        <SidebarMenu className="px-2 gap-1.5">
           {links.map((link) => {
-            const Icon = link.icon;
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold text-xs uppercase tracking-wider group",
-                  isActive 
-                    ? "bg-secondary text-primary shadow-lg shadow-secondary/10" 
-                    : "text-white/60 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <Icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", isActive ? "text-primary" : "text-white/40")} />
-                {link.label}
-              </Link>
+              <SidebarMenuItem key={link.href}>
+                <SidebarMenuButton 
+                  asChild 
+                  isActive={isActive}
+                  tooltip={link.label}
+                  className={cn(
+                    "rounded-xl transition-all font-bold text-xs uppercase tracking-wider h-11",
+                    isActive 
+                      ? "bg-secondary text-primary shadow-lg" 
+                      : "text-white/60 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <Link href={link.href}>
+                    <link.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-white/40")} />
+                    <span>{link.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             );
           })}
-        </nav>
-      </div>
+        </SidebarMenu>
+      </SidebarContent>
 
-      <div className="mt-auto p-4 space-y-4">
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm group/user transition-all hover:bg-white/10">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2 border-white/10 shrink-0">
-              <AvatarImage src={displayPhoto || undefined} alt={fullName} />
-              <AvatarFallback className="bg-secondary text-primary font-bold text-sm">
-                {fullName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                {isProfileLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin text-white/40" />
-                ) : role === 'admin' ? (
-                  <ShieldCheck className="h-3 w-3 text-secondary" />
-                ) : (
-                  <GraduationCap className="h-3 w-3 text-secondary" />
+      <SidebarFooter className="bg-primary text-white p-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton 
+                  size="lg" 
+                  className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                >
+                  <Avatar className="h-8 w-8 border-2 border-white/10">
+                    <AvatarImage src={displayPhoto || undefined} alt={fullName} />
+                    <AvatarFallback className="bg-secondary text-primary font-bold text-xs">
+                      {fullName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                    <span className="text-xs font-bold leading-none truncate mb-1">
+                      {isProfileLoading ? 'Identifying...' : fullName}
+                    </span>
+                    <div className="flex items-center gap-1 opacity-50">
+                      {role === 'admin' ? (
+                        <ShieldCheck className="h-2.5 w-2.5 text-secondary" />
+                      ) : (
+                        <GraduationCap className="h-2.5 w-2.5 text-secondary" />
+                      )}
+                      <span className="text-[8px] font-bold uppercase tracking-widest">{roleLabel}</span>
+                    </div>
+                  </div>
+                  <ChevronUp className="h-4 w-4 opacity-50 group-data-[collapsible=icon]:hidden" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+                {role === 'admin' && (
+                  <>
+                    <DropdownMenuItem 
+                      asChild 
+                      className="rounded-xl cursor-pointer py-3 focus:bg-primary/5 focus:text-primary font-bold text-xs uppercase tracking-wider"
+                    >
+                      <Link href="/admin/settings">
+                        <Settings className="h-4 w-4 mr-3" />
+                        System Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-2 bg-zinc-50" />
+                  </>
                 )}
-                <span className="text-[9px] font-bold text-secondary uppercase tracking-widest leading-none">
-                  {roleLabel}
-                </span>
-              </div>
-              <p className="text-xs font-bold text-white leading-tight truncate">
-                {isProfileLoading ? 'Identifying...' : fullName}
-              </p>
-              <p className="text-[9px] text-white/30 font-medium truncate mt-0.5">
-                {profile?.email || user?.email}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <button 
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-destructive transition-all group font-bold text-xs uppercase tracking-wider"
-        >
-          <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          <span>Sign Out</span>
-        </button>
-      </div>
-    </div>
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="rounded-xl cursor-pointer py-3 focus:bg-destructive focus:text-white font-bold text-xs uppercase tracking-wider text-destructive"
+                >
+                  <LogOut className="h-4 w-4 mr-3" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

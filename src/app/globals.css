@@ -24,6 +24,16 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221 100% 28%;
     --radius: 0.75rem;
+
+    /* Sidebar Variables - CICS Navy Theme */
+    --sidebar-background: 221 100% 28%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 45 100% 50%;
+    --sidebar-primary-foreground: 221 100% 10%;
+    --sidebar-accent: 45 100% 50%;
+    --sidebar-accent-foreground: 221 100% 10%;
+    --sidebar-border: 221 100% 35%;
+    --sidebar-ring: 45 100% 50%;
   }
   .dark {
     --background: 222.2 84% 4.9%;
