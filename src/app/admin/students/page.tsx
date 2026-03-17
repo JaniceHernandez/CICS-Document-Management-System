@@ -415,7 +415,7 @@ export default function InstitutionalRegistry() {
                                     className="cursor-pointer font-bold rounded-lg py-2 text-destructive"
                                     onClick={() => handleRevokeClearance(member)}
                                   >
-                                    <Trash2 className="h-4 w-4 mr-2" /> Revoke Admin Access
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Account/Email
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>

@@ -1,4 +1,3 @@
-
 /**
  * Official Institutional Constants for CICS DMS
  * 
