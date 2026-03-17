@@ -23,6 +23,7 @@ import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { doc } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SidebarNavProps {
   role: 'admin' | 'student';
@@ -67,6 +68,7 @@ export function SidebarNav({ role }: SidebarNavProps) {
 
   const fullName = profile?.fullName || user?.displayName || 'Institutional User';
   const roleLabel = role === 'admin' ? 'Admin' : 'Verified Student';
+  const displayPhoto = profile?.photoURL || user?.photoURL;
 
   return (
     <div className="flex flex-col h-full bg-primary text-white w-64 fixed left-0 top-0 border-r border-white/10 shadow-2xl z-40">
@@ -114,29 +116,35 @@ export function SidebarNav({ role }: SidebarNavProps) {
         </nav>
       </div>
 
-      <div className="mt-auto p-6 space-y-4">
-        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm space-y-2">
-          <div className="flex items-center gap-2">
-            {isProfileLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin text-white/40" />
-            ) : role === 'admin' ? (
-              <ShieldCheck className="h-3 w-3 text-secondary" />
-            ) : (
-              <GraduationCap className="h-3 w-3 text-secondary" />
-            )}
-            <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
-              Session Identity
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold leading-tight text-white line-clamp-2">
-              {isProfileLoading ? 'Identifying...' : `${roleLabel}: ${fullName}`}
-            </p>
-            {profile?.email && (
-              <p className="text-[9px] font-medium text-white/30 mt-1 uppercase tracking-tighter truncate">
-                {profile.email}
+      <div className="mt-auto p-4 space-y-4">
+        <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-sm group/user transition-all hover:bg-white/10">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border-2 border-white/10 shrink-0">
+              <AvatarImage src={displayPhoto || undefined} alt={fullName} />
+              <AvatarFallback className="bg-secondary text-primary font-bold text-sm">
+                {fullName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                {isProfileLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-white/40" />
+                ) : role === 'admin' ? (
+                  <ShieldCheck className="h-3 w-3 text-secondary" />
+                ) : (
+                  <GraduationCap className="h-3 w-3 text-secondary" />
+                )}
+                <span className="text-[9px] font-bold text-secondary uppercase tracking-widest leading-none">
+                  {roleLabel}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-white leading-tight truncate">
+                {isProfileLoading ? 'Identifying...' : fullName}
               </p>
-            )}
+              <p className="text-[9px] text-white/30 font-medium truncate mt-0.5">
+                {profile?.email || user?.email}
+              </p>
+            </div>
           </div>
         </div>
         

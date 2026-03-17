@@ -72,6 +72,7 @@ function LoginContent() {
             id: user.uid,
             email: user.email,
             fullName: user.displayName || userData?.fullName || 'Institutional Administrator',
+            photoURL: user.photoURL || null,
             role: 'Admin',
             status: 'active',
             lastLoginAt: new Date().toISOString(),
@@ -93,6 +94,7 @@ function LoginContent() {
               id: user.uid,
               email: userEmail,
               fullName: user.displayName || 'Institutional Student',
+              photoURL: user.photoURL || null,
               role: 'Student',
               status: 'active',
               createdAt: new Date().toISOString(),
@@ -103,6 +105,7 @@ function LoginContent() {
           } else {
             await setDoc(userDocRef, {
               fullName: user.displayName || userData?.fullName || 'Institutional Student',
+              photoURL: user.photoURL || userData?.photoURL || null,
               lastLoginAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true });
