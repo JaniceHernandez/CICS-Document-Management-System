@@ -1,54 +1,20 @@
+
 /**
  * Official Institutional Constants for CICS DMS
+ * 
+ * NOTE: Academic programs and document categories are now managed 
+ * dynamically via Firestore System Settings. These constants 
+ * are kept for fallback utility and type definitions.
  */
 
-export const DOCUMENT_CATEGORIES = [
-  { id: 'form', name: 'Form' },
-  { id: 'guidelines', name: 'Guidelines' },
-  { id: 'checklist', name: 'Checklist' },
-  { id: 'policies', name: 'Policies' },
-  { id: 'manuals', name: 'Manuals' },
-  { id: 'syllabus', name: 'Syllabus' },
-];
+export const DOCUMENT_CATEGORIES: {id: string, name: string}[] = [];
 
-export const ACADEMIC_PROGRAMS = [
-  { 
-    id: 'blis', 
-    shortCode: 'BLIS', 
-    name: 'Bachelor of Library and Information Science' 
-  },
-  { 
-    id: 'bscs', 
-    shortCode: 'BSCS', 
-    name: 'Bachelor of Science in Computer Science' 
-  },
-  { 
-    id: 'bsemc-dat', 
-    shortCode: 'BSEMC-DAT', 
-    name: 'Bachelor of Science in Entertainment and Multimedia Computing with Specialization in Digital Animation Technology' 
-  },
-  { 
-    id: 'bsemc-gd', 
-    shortCode: 'BSEMC-GD', 
-    name: 'Bachelor of Science in Entertainment and Multimedia Computing with Specialization in Game Development' 
-  },
-  { 
-    id: 'bsit', 
-    shortCode: 'BSIT', 
-    name: 'Bachelor of Science in Information Technology' 
-  },
-  { 
-    id: 'bsis', 
-    shortCode: 'BSIS', 
-    name: 'Bachelor of Science in Information System' 
-  },
-];
+export const ACADEMIC_PROGRAMS: {id: string, shortCode: string, name: string}[] = [];
 
-export const getCategoryName = (id: string) => 
-  DOCUMENT_CATEGORIES.find(c => c.id === id)?.name || 'Requirement';
-
-export const getProgramName = (id: string) => 
-  ACADEMIC_PROGRAMS.find(p => p.id === id)?.name || 'Institutional';
-
-export const getProgramCode = (id: string) => 
-  ACADEMIC_PROGRAMS.find(p => p.id === id)?.shortCode || 'Global';
+/**
+ * Utility functions for resolving names. 
+ * Note: Components should prefer lookup from fetched collections.
+ */
+export const getCategoryName = (id: string) => 'Requirement';
+export const getProgramName = (id: string) => 'Institutional';
+export const getProgramCode = (id: string) => 'Global';

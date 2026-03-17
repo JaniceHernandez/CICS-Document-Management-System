@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -14,7 +15,6 @@ import {
   Users,
   ShieldCheck,
   Mail,
-  Filter,
   GraduationCap
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,6 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ACADEMIC_PROGRAMS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 
 export default function InstitutionalRegistry() {
@@ -69,7 +68,10 @@ export default function InstitutionalRegistry() {
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
 
   const usersQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'users') : null, [firestore, adminUser]);
+  const programsQuery = useMemoFirebase(() => (firestore && adminUser) ? collection(firestore, 'programs') : null, [firestore, adminUser]);
+  
   const { data: users, isLoading } = useCollection(usersQuery);
+  const { data: programs } = useCollection(programsQuery);
 
   const filteredUsers = users?.filter(u => {
     const matchesSearch = u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -103,7 +105,6 @@ export default function InstitutionalRegistry() {
     if (!firestore || !adminEmail.trim()) return;
     setIsSubmittingAdmin(true);
     try {
-      // Store in authorizedAdmins to check during login
       const emailId = adminEmail.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
       await setDoc(doc(firestore, 'authorizedAdmins', emailId), {
         email: adminEmail.toLowerCase().trim(),
@@ -124,7 +125,7 @@ export default function InstitutionalRegistry() {
 
   const getProgramCode = (programIds: string[]) => {
     if (!programIds || programIds.length === 0) return 'N/A';
-    return ACADEMIC_PROGRAMS.find(p => p.id === programIds[0])?.shortCode || 'N/A';
+    return programs?.find(p => p.id === programIds[0])?.shortCode || 'N/A';
   };
 
   return (
@@ -312,7 +313,7 @@ export default function InstitutionalRegistry() {
           </Card>
         </div>
 
-        <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
+          <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
           <DialogContent className="max-w-md rounded-3xl border-none p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-8 bg-primary text-white">
               <div className="p-3 bg-white/10 w-fit rounded-2xl mb-4">

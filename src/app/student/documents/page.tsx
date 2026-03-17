@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -38,7 +39,6 @@ import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@
 import { collection, doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { DOCUMENT_CATEGORIES, ACADEMIC_PROGRAMS, getCategoryName, getProgramCode } from '@/lib/constants';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
@@ -53,18 +53,19 @@ export default function StudentDocuments() {
   const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
+  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+
+  const { data: documents, isLoading: isDocsLoading } = useCollection(docsQuery);
+  const { data: categories } = useCollection(categoriesQuery);
+  const { data: programs } = useCollection(programsQuery);
+
   useEffect(() => {
-    if (!isUserLoading && !isProfileLoading && user && !userProfile) {
-      // User logged in but no profile exists, maybe skip onboarding?
-      // For DMS, onboarding is critical to set programIds.
-    }
     if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
-
-  const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
-  const { data: documents, isLoading: isDocsLoading } = useCollection(docsQuery);
+  }, [user, isUserLoading, router]);
 
   const filteredDocs = documents?.filter(doc => {
     const isStudentSub = doc.fileUrl?.includes('student-submissions') || doc.type === 'submission';
@@ -116,6 +117,9 @@ export default function StudentDocuments() {
 
     toast({ title: "File Accessed", description: `Opening ${documentData.title}...` });
   };
+
+  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
+  const getProgramCode = (id: string) => programs?.find(p => p.id === id)?.shortCode || 'Global';
 
   if (isUserLoading || isProfileLoading) {
     return (
@@ -170,7 +174,7 @@ export default function StudentDocuments() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {DOCUMENT_CATEGORIES.map(cat => (
+                    {categories?.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>

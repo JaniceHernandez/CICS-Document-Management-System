@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,14 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
 import { Loader2, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { ACADEMIC_PROGRAMS } from '@/lib/constants';
 
 interface AnnouncementDialogProps {
   open: boolean;
@@ -38,6 +38,9 @@ export function AnnouncementDialog({ open, onOpenChange, announcement: editAnn }
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+  const { data: programs } = useCollection(programsQuery);
 
   useEffect(() => {
     if (editAnn) {
@@ -150,7 +153,7 @@ export function AnnouncementDialog({ open, onOpenChange, announcement: editAnn }
               <span className="text-[10px] font-bold text-primary uppercase">Default: Global (All Students)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
-              {ACADEMIC_PROGRAMS.map((prog) => (
+              {programs?.map((prog) => (
                 <div 
                   key={prog.id} 
                   className={cn(

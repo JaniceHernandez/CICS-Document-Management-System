@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -44,7 +45,6 @@ import { DocumentDialog } from '@/components/admin/document-dialog';
 import { logActivity } from '@/lib/activity-logging';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { getCategoryName } from '@/lib/constants';
 
 export default function DocumentManagement() {
   const firestore = useFirestore();
@@ -55,7 +55,10 @@ export default function DocumentManagement() {
   const [editingDoc, setEditingDoc] = useState<any>(null);
 
   const documentsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+  
   const { data: documents, isLoading: docsLoading } = useCollection(documentsQuery);
+  const { data: categories } = useCollection(categoriesQuery);
 
   const filteredDocs = documents?.filter(doc => {
     const isInstitutional = doc.type === 'institutional' || !doc.fileUrl?.includes('student-submissions');
@@ -107,6 +110,8 @@ export default function DocumentManagement() {
       }
     }
   };
+
+  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
 
   return (
     <div className="flex min-h-screen bg-zinc-50/30">

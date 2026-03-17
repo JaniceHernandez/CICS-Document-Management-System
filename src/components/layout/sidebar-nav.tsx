@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -17,7 +18,8 @@ import {
   Inbox,
   ShieldCheck,
   Loader2,
-  GraduationCap
+  GraduationCap,
+  Settings
 } from 'lucide-react';
 import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -36,6 +38,7 @@ const adminLinks = [
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
   { href: '/admin/students', label: 'Institutional Registry', icon: Users },
   { href: '/admin/inquiries', label: 'Support Inquiries', icon: MessageSquare },
+  { href: '/admin/settings', label: 'System Settings', icon: Settings },
 ];
 
 const studentLinks = [

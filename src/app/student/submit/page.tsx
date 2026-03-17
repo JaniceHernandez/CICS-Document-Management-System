@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -51,7 +52,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { SubmitDocumentDialog } from '@/components/student/submit-document-dialog';
 import { cn } from '@/lib/utils';
-import { DOCUMENT_CATEGORIES, getCategoryName } from '@/lib/constants';
 
 export default function StudentSubmitPage() {
   const firestore = useFirestore();
@@ -82,7 +82,10 @@ export default function StudentSubmitPage() {
     );
   }, [firestore, user]);
 
+  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
+
   const { data: documents, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
+  const { data: categories } = useCollection(categoriesQuery);
 
   const submissions = documents?.filter(doc => {
     return doc.type === 'submission' || doc.fileUrl?.includes('student-submissions');
@@ -123,6 +126,8 @@ export default function StudentSubmitPage() {
       }
     }
   };
+
+  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
 
   if (isUserLoading || (!user && !isUserLoading)) {
     return (
@@ -270,7 +275,7 @@ export default function StudentSubmitPage() {
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {DOCUMENT_CATEGORIES.map((cat) => (
+                    {categories?.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -5,11 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, collection } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { ACADEMIC_PROGRAMS } from '@/lib/constants';
 
 export default function StudentOnboarding() {
   const router = useRouter();
@@ -18,6 +18,9 @@ export default function StudentOnboarding() {
   const { toast } = useToast();
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+  const { data: programs, isLoading: isProgramsLoading } = useCollection(programsQuery);
 
   const handleFinish = async () => {
     if (!firestore || !user || !selectedProgram) return;
@@ -46,7 +49,7 @@ export default function StudentOnboarding() {
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isProgramsLoading) {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -74,7 +77,7 @@ export default function StudentOnboarding() {
           </CardHeader>
           <CardContent className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ACADEMIC_PROGRAMS.map((program) => (
+              {programs?.map((program) => (
                 <div
                   key={program.id}
                   onClick={() => setSelectedProgram(program.id)}
