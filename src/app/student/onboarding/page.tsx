@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { useFirebase, useUser } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ACADEMIC_PROGRAMS } from '@/lib/constants';
 
 export default function StudentOnboarding() {
   const router = useRouter();
@@ -17,9 +18,6 @@ export default function StudentOnboarding() {
   const { toast } = useToast();
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const programsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'programs') : null, [firestore]);
-  const { data: programs, isLoading: isProgramsLoading } = useCollection(programsQuery);
 
   const handleFinish = async () => {
     if (!firestore || !user || !selectedProgram) return;
@@ -48,7 +46,7 @@ export default function StudentOnboarding() {
     }
   };
 
-  if (isUserLoading || isProgramsLoading) {
+  if (isUserLoading) {
     return (
       <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -58,7 +56,7 @@ export default function StudentOnboarding() {
 
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl space-y-8">
+      <div className="w-full max-w-3xl space-y-8">
         <div className="text-center space-y-2">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
             <GraduationCap className="h-10 w-10" />
@@ -76,12 +74,12 @@ export default function StudentOnboarding() {
           </CardHeader>
           <CardContent className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {programs?.map((program) => (
+              {ACADEMIC_PROGRAMS.map((program) => (
                 <div
                   key={program.id}
                   onClick={() => setSelectedProgram(program.id)}
                   className={cn(
-                    "relative p-6 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between group h-32",
+                    "relative p-6 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between group min-h-[120px]",
                     selectedProgram === program.id
                       ? "border-primary bg-primary/5 shadow-md"
                       : "border-zinc-100 bg-zinc-50 hover:border-primary/30"
@@ -98,7 +96,7 @@ export default function StudentOnboarding() {
                       <CheckCircle2 className="h-5 w-5 text-primary" />
                     )}
                   </div>
-                  <p className="font-bold text-zinc-900 group-hover:text-primary transition-colors line-clamp-2">
+                  <p className="font-bold text-zinc-900 group-hover:text-primary transition-colors text-sm mt-4 leading-tight">
                     {program.name}
                   </p>
                 </div>

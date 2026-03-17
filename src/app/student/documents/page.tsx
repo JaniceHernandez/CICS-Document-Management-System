@@ -34,10 +34,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
+import { DOCUMENT_CATEGORIES, ACADEMIC_PROGRAMS, getCategoryName, getProgramCode } from '@/lib/constants';
 
 export default function StudentDocuments() {
   const firestore = useFirestore();
@@ -47,57 +48,34 @@ export default function StudentDocuments() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const { toast } = useToast();
 
+  const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
+
   useEffect(() => {
-    async function checkOnboarding() {
-      if (!isUserLoading && !user) {
-        router.push('/login');
-        return;
-      }
-
-      if (user && firestore) {
-        const userSnap = await getDoc(doc(firestore, 'users', user.uid));
-        const userData = userSnap.data();
-        setUserProfile(userData);
-
-        if (!userData?.programIds || userData.programIds.length === 0) {
-          router.push('/student/onboarding');
-          return;
-        }
-      }
+    if (!isUserLoading && !isProfileLoading && user && !userProfile) {
+      // User logged in but no profile exists, maybe skip onboarding?
+      // For DMS, onboarding is critical to set programIds.
     }
-    checkOnboarding();
-  }, [user, isUserLoading, firestore, router]);
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
   const docsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'documents') : null, [firestore, user]);
-  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
-  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
+  const { data: documents, isLoading: isDocsLoading } = useCollection(docsQuery);
 
-  const { data: documents, isLoading } = useCollection(docsQuery);
-  const { data: categories } = useCollection(categoriesQuery);
-  const { data: programs } = useCollection(programsQuery);
-
-  // Filtering Logic: 
-  // 1. Must NOT be from the 'student-submissions' folder
-  // 2. Only show documents for the student's program(s) OR "All Programs" (Global)
-  // 3. Exclude documents marked as 'hidden' by administrators
   const filteredDocs = documents?.filter(doc => {
-    // Segregation check: exclude student submissions
     const isStudentSub = doc.fileUrl?.includes('student-submissions') || doc.type === 'submission';
     if (isStudentSub) return false;
-
-    // Visibility check: Ignore hidden records
     if (doc.visibilityStatus === 'hidden') return false;
 
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || doc.categoryId === selectedCategory;
     
-    // Check if document is Global or matches the student's program(s)
     const isGlobal = !doc.programIds || doc.programIds.length === 0;
     const isForStudentProgram = userProfile?.programIds?.some((pid: string) => doc.programIds?.includes(pid));
-    
     const matchesProgram = isGlobal || isForStudentProgram;
 
     return matchesSearch && matchesCategory && matchesProgram;
@@ -106,7 +84,6 @@ export default function StudentDocuments() {
   const sortedDocs = filteredDocs?.sort((a, b) => {
     const dateA = new Date(a.uploadDate || a.createdAt || 0).getTime();
     const dateB = new Date(b.uploadDate || b.createdAt || 0).getTime();
-
     if (sortBy === 'recent') return dateB - dateA;
     if (sortBy === 'downloads') return (b.downloadCount || 0) - (a.downloadCount || 0);
     if (sortBy === 'alpha') return (a.title || '').localeCompare(b.title || '');
@@ -137,15 +114,10 @@ export default function StudentDocuments() {
     link.click();
     document.body.removeChild(link);
 
-    toast({
-      title: "File Accessed",
-      description: `Opening ${documentData.title}...`,
-    });
+    toast({ title: "File Accessed", description: `Opening ${documentData.title}...` });
   };
 
-  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Uncategorized';
-
-  if (isUserLoading || (!user && !isUserLoading)) {
+  if (isUserLoading || isProfileLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -154,7 +126,7 @@ export default function StudentDocuments() {
   }
 
   const studentProgramCode = userProfile?.programIds?.length > 0 
-    ? programs?.find(p => p.id === userProfile.programIds[0])?.shortCode 
+    ? getProgramCode(userProfile.programIds[0]) 
     : 'All Programs';
 
   return (
@@ -198,7 +170,7 @@ export default function StudentDocuments() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories?.map(cat => (
+                    {DOCUMENT_CATEGORIES.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -220,7 +192,7 @@ export default function StudentDocuments() {
             </CardContent>
           </Card>
 
-          {isLoading ? (
+          {isDocsLoading ? (
             <div className="flex flex-col items-center justify-center py-32">
               <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
               <p className="text-muted-foreground font-medium">Loading library collections...</p>
@@ -282,10 +254,7 @@ export default function StudentDocuments() {
               </p>
               <Button 
                 variant="link" 
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('all');
-                }}
+                onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
                 className="mt-4 text-primary font-bold"
               >
                 Clear all filters
@@ -298,19 +267,13 @@ export default function StudentDocuments() {
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
           <DialogHeader className="p-6 bg-primary text-white shrink-0 relative">
-            <div className="flex items-center justify-between pr-8">
-              <div>
-                <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
-                <DialogDescription className="text-white/70">
-                  Uploaded on {previewDoc && new Date(previewDoc.uploadDate || previewDoc.createdAt).toLocaleDateString()}
-                </DialogDescription>
-              </div>
+            <div>
+              <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
+              <DialogDescription className="text-white/70">
+                Uploaded on {previewDoc && new Date(previewDoc.uploadDate || previewDoc.createdAt).toLocaleDateString()}
+              </DialogDescription>
             </div>
-            <Button 
-              variant="ghost" 
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" 
-              onClick={() => setPreviewDoc(null)}
-            >
+            <Button variant="ghost" className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" onClick={() => setPreviewDoc(null)}>
               <X className="h-6 w-6" />
             </Button>
           </DialogHeader>
@@ -334,9 +297,7 @@ export default function StudentDocuments() {
                     Description
                   </div>
                   <div className="bg-zinc-50 p-6 rounded-2xl border border-zinc-100 shadow-inner">
-                    <p className="text-sm text-zinc-600 leading-relaxed italic">
-                      {previewDoc?.description || "No description provided."}
-                    </p>
+                    <p className="text-sm text-zinc-600 leading-relaxed italic">{previewDoc?.description || "No description provided."}</p>
                   </div>
                 </div>
 
@@ -347,7 +308,7 @@ export default function StudentDocuments() {
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     <span>Size</span>
-                    <span>{previewDoc && previewDoc.fileSize ? (previewDoc.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB</span>
+                    <span>{previewDoc && (previewDoc.fileSize / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
                     <span>Downloads</span>

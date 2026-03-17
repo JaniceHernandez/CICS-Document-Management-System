@@ -43,7 +43,6 @@ import {
   Trash2,
   Edit,
   ExternalLink,
-  History,
   CheckCircle,
   Clock,
   Inbox
@@ -52,6 +51,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { SubmitDocumentDialog } from '@/components/student/submit-document-dialog';
 import { cn } from '@/lib/utils';
+import { DOCUMENT_CATEGORIES, getCategoryName } from '@/lib/constants';
 
 export default function StudentSubmitPage() {
   const firestore = useFirestore();
@@ -73,9 +73,6 @@ export default function StudentSubmitPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
-  
-  // Fetch documents uplaoded by THIS student.
   const mySubmissionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -85,10 +82,8 @@ export default function StudentSubmitPage() {
     );
   }, [firestore, user]);
 
-  const { data: categories } = useCollection(categoriesQuery);
   const { data: documents, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
 
-  // Broaden filter to ensure student-filed records are visible even if metadata is legacy.
   const submissions = documents?.filter(doc => {
     return doc.type === 'submission' || doc.fileUrl?.includes('student-submissions');
   }) || [];
@@ -199,7 +194,7 @@ export default function StudentSubmitPage() {
                             <div>
                               <p className="font-bold text-zinc-800 leading-tight">{sub.title}</p>
                               <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                                {categories?.find(c => c.id === sub.categoryId)?.name || 'Requirement'} • {sub.fileSize ? (sub.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
+                                {getCategoryName(sub.categoryId)} • {sub.fileSize ? (sub.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
                               </p>
                             </div>
                           </div>
@@ -238,13 +233,7 @@ export default function StudentSubmitPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                            <a 
-                              href={sub.fileUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5"
-                              title="Preview File"
-                            >
+                            <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5" title="Preview File">
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           </div>
@@ -272,11 +261,7 @@ export default function StudentSubmitPage() {
             <div className="p-8 space-y-6">
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Document Title</Label>
-                <Input 
-                  value={editTitle} 
-                  onChange={(e) => setEditTitle(e.target.value)} 
-                  className="h-12 rounded-xl focus-visible:ring-primary shadow-sm"
-                />
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="h-12 rounded-xl focus-visible:ring-primary shadow-sm" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Requirement Category</Label>
@@ -285,7 +270,7 @@ export default function StudentSubmitPage() {
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {categories?.map((cat) => (
+                    {DOCUMENT_CATEGORIES.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -293,12 +278,7 @@ export default function StudentSubmitPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Submission Notes</Label>
-                <Textarea 
-                  value={editDesc} 
-                  onChange={(e) => setEditDesc(e.target.value)} 
-                  placeholder="Provide any context for the administrator..."
-                  className="min-h-[120px] rounded-xl resize-none shadow-sm"
-                />
+                <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Provide any context for the administrator..." className="min-h-[120px] rounded-xl resize-none shadow-sm" />
               </div>
             </div>
             <DialogFooter className="p-8 bg-zinc-50 border-t flex items-center justify-between">

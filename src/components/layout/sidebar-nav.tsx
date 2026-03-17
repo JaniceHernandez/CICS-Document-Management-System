@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { 
   FileText, 
   Users, 
-  Settings, 
   Search, 
   HelpCircle, 
   Bell, 
@@ -34,9 +33,8 @@ const adminLinks = [
   { href: '/admin/documents', label: 'Institutional Library', icon: FileText },
   { href: '/admin/submissions', label: 'Student Submissions', icon: Inbox },
   { href: '/admin/announcements', label: 'Announcements', icon: Bell },
-  { href: '/admin/students', label: 'Student Registry', icon: Users },
+  { href: '/admin/students', label: 'Institutional Registry', icon: Users },
   { href: '/admin/inquiries', label: 'Support Inquiries', icon: MessageSquare },
-  { href: '/admin/settings', label: 'System Settings', icon: Settings },
 ];
 
 const studentLinks = [
@@ -55,7 +53,6 @@ export function SidebarNav({ role }: SidebarNavProps) {
   const logoImage = PlaceHolderImages.find(img => img.id === 'cics-logo');
   const links = role === 'admin' ? adminLinks : studentLinks;
 
-  // Fetch verified user profile to get the Full Name
   const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
@@ -68,7 +65,6 @@ export function SidebarNav({ role }: SidebarNavProps) {
     }
   };
 
-  // Prioritize Firestore fullName, fall back to Auth displayName, then generic label
   const fullName = profile?.fullName || user?.displayName || 'Institutional User';
   const roleLabel = role === 'admin' ? 'Admin' : 'Verified Student';
 

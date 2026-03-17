@@ -22,14 +22,15 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { uploadToBlob } from '@/app/actions/storage';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { logActivity } from '@/lib/activity-logging';
-import { Loader2, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { ACADEMIC_PROGRAMS, DOCUMENT_CATEGORIES } from '@/lib/constants';
 
 interface DocumentDialogProps {
   open: boolean;
@@ -49,11 +50,6 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
   const [categoryId, setCategoryId] = useState('');
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
-
-  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
-  const programsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'programs') : null, [firestore, user]);
-  const { data: categories } = useCollection(categoriesQuery);
-  const { data: programs } = useCollection(programsQuery);
 
   useEffect(() => {
     if (editDoc && open) {
@@ -261,7 +257,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl border-none shadow-2xl">
-                    {categories?.map((cat) => (
+                    {DOCUMENT_CATEGORIES.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id} className="rounded-xl my-1">{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -289,7 +285,7 @@ export function DocumentDialog({ open, onOpenChange, document: editDoc }: Docume
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 bg-white rounded-3xl border border-zinc-100 shadow-inner">
-              {programs?.map((prog) => (
+              {ACADEMIC_PROGRAMS.map((prog) => (
                 <div 
                   key={prog.id} 
                   className={cn(
