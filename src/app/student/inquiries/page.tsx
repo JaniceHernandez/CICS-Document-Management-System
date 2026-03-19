@@ -19,12 +19,14 @@ import {
   ShieldCheck,
   ChevronLeft,
   MessageCircle,
-  History
+  History,
+  Trash2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, addDoc, query, orderBy, doc } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
@@ -128,6 +130,16 @@ export default function StudentForum() {
     }
   };
 
+  const handleDelete = (id: string, sub: string) => {
+    if (!firestore || !user) return;
+    if (confirm(`Permanently remove this discussion: "${sub}"?`)) {
+      deleteDocumentNonBlocking(doc(firestore, 'inquiries', id));
+      logActivity(firestore, user.uid, 'DOCUMENT_DELETE', `Student deleted their forum post: ${sub}`);
+      toast({ title: "Topic Removed" });
+      setSelectedInquiry(null);
+    }
+  };
+
   const handlePostComment = async () => {
     if (!firestore || !user || !selectedInquiry || !commentText.trim()) return;
     setIsCommenting(true);
@@ -179,9 +191,22 @@ export default function StudentForum() {
                 )}>
                   {selectedInquiry.status}
                 </Badge>
-                <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
-                  Discussion Thread #{selectedInquiry.id.slice(0, 6)}
-                </span>
+                <div className="flex items-center gap-4">
+                  {selectedInquiry.studentId === user.uid && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-white/60 hover:text-white hover:bg-white/10 h-8 font-bold text-[10px] rounded-full"
+                      onClick={() => handleDelete(selectedInquiry.id, selectedInquiry.subject)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      Delete Topic
+                    </Button>
+                  )}
+                  <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
+                    Discussion Thread #{selectedInquiry.id.slice(0, 6)}
+                  </span>
+                </div>
               </div>
               <CardTitle className="text-4xl font-headline font-bold leading-tight">{selectedInquiry.subject}</CardTitle>
               <CardDescription className="text-white/70 text-lg mt-4 flex items-center gap-3">
@@ -393,7 +418,7 @@ export default function StudentForum() {
                 <CardContent className="p-8">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                     <div className="flex items-start gap-6">
-                      <div className={cn("p-4 rounded-2xl transition-all shadow-sm", iq.status === 'Resolved' ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-600")}>
+                      <div className={cn("p-4 rounded-2xl transition-all shadow-sm", iq.status === 'Resolved' ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700")}>
                         {iq.status === 'Resolved' ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
                       </div>
                       <div className="space-y-2">
@@ -408,7 +433,19 @@ export default function StudentForum() {
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" className="rounded-2xl h-12 px-6 font-bold group-hover:bg-primary group-hover:text-white transition-all">Join Thread</Button>
+                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                      <Button variant="ghost" className="rounded-2xl h-12 px-6 font-bold group-hover:bg-primary group-hover:text-white transition-all">Join Thread</Button>
+                      {iq.studentId === user.uid && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive hover:text-white rounded-xl h-12 w-12 transition-all"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(iq.id, iq.subject); }}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
