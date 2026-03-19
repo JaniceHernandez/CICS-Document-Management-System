@@ -234,7 +234,7 @@ export default function StudentForum() {
                 >
                   {isCommentsLoading ? (
                     <div className="py-10 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
-                  ) : comments?.length === 0 ? (
+                  ) : (!comments || comments.length === 0) ? (
                     <div className="text-center py-10 bg-zinc-50 rounded-3xl border border-dashed border-zinc-200">
                       <p className="text-muted-foreground font-medium">No community comments yet. Be the first to help!</p>
                     </div>
