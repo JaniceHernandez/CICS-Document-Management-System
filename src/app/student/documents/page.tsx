@@ -91,31 +91,51 @@ export default function StudentDocuments() {
     return 0;
   });
 
-  const handleDownload = (documentData: any) => {
+  const handleDownload = async (documentData: any) => {
     if (!firestore || !user || !documentData) return;
 
-    logActivity(
-      firestore, 
-      user.uid, 
-      'DOCUMENT_DOWNLOAD', 
-      `${userProfile?.fullName || user.email} Downloaded Document: ${documentData.title}`, 
-      documentData.id
-    );
+    try {
+      // Show loading toast
+      toast({ title: "Downloading...", description: `Preparing ${documentData.title} for download.` });
 
-    updateDocumentNonBlocking(doc(firestore, 'documents', documentData.id), {
-      downloadCount: (documentData.downloadCount || 0) + 1,
-      updatedAt: new Date().toISOString()
-    });
+      // 1. Fetch the file as a blob to verify it was actually retrieved
+      const response = await fetch(documentData.fileUrl);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      
+      // 2. ONLY IF SUCCESSFUL: Increment download count and log activity
+      logActivity(
+        firestore, 
+        user.uid, 
+        'DOCUMENT_DOWNLOAD', 
+        `${userProfile?.fullName || user.email} Downloaded Document: ${documentData.title}`, 
+        documentData.id
+      );
 
-    const link = document.createElement('a');
-    link.href = documentData.fileUrl;
-    link.setAttribute('download', documentData.fileName || 'document.pdf');
-    link.setAttribute('target', '_blank');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      updateDocumentNonBlocking(doc(firestore, 'documents', documentData.id), {
+        downloadCount: (documentData.downloadCount || 0) + 1,
+        updatedAt: new Date().toISOString()
+      });
 
-    toast({ title: "File Accessed", description: `Opening ${documentData.title}...` });
+      // 3. Trigger the browser's download dialog using the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', documentData.fileName || `${documentData.title}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Download Successful", description: `${documentData.title} has been saved.` });
+    } catch (error: any) {
+      console.error("Download Error:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Download Failed", 
+        description: "Could not retrieve the document. Please try again." 
+      });
+    }
   };
 
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
