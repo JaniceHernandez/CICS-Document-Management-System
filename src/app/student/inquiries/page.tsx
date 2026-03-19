@@ -188,7 +188,7 @@ export default function StudentForum() {
               <div className="flex items-center justify-between mb-6">
                 <Badge className={cn(
                   "border-none px-4 py-1.5 font-bold uppercase text-[10px] tracking-widest shadow-lg",
-                  isResolved ? "bg-green-500 text-white" : "bg-white/20 text-white"
+                  isResolved ? "bg-green-500 text-white" : "bg-secondary text-primary"
                 )}>
                   {isResolved ? 'Resolved' : 'Active'}
                 </Badge>
@@ -427,7 +427,10 @@ export default function StudentForum() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-3">
                             <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{iq.subject}</h3>
-                            <Badge variant="outline" className="px-3 py-0.5 font-bold uppercase text-[9px] tracking-widest border-zinc-200 text-zinc-500">
+                            <Badge className={cn(
+                              "px-3 py-0.5 font-bold uppercase text-[9px] tracking-widest border-none shadow-sm",
+                              isResolved ? "bg-green-100 text-green-700" : "bg-secondary text-primary"
+                            )}>
                               {isResolved ? 'Resolved' : 'Active'}
                             </Badge>
                           </div>
