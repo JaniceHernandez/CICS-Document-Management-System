@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,8 @@ import {
   Mail,
   GraduationCap,
   ShieldAlert,
-  Trash2
+  Trash2,
+  Filter
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,6 +33,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -84,7 +88,7 @@ export default function InstitutionalRegistry() {
 
   const isSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
 
-  // Combine active users and pending administrative clearances into one list
+  // Combine active users and pending administrative clearances into one unified list
   const combinedMembers = [...(users || [])];
   
   authorizedAdmins?.forEach(auth => {
@@ -119,13 +123,11 @@ export default function InstitutionalRegistry() {
   const toggleUserStatus = (userData: any) => {
     if (!firestore || !currentUser) return;
     
-    // Safety: Cannot block the super admin
     if (userData.email === SUPER_ADMIN_EMAIL) {
       toast({ title: "Action Denied", description: "The Super Admin account cannot be restricted.", variant: "destructive" });
       return;
     }
 
-    // Regular admins cannot block other admins
     if (!isSuperAdmin && userData.role === 'Admin') {
       toast({ title: "Permission Denied", description: "Only the Super Admin can restrict staff access.", variant: "destructive" });
       return;
@@ -184,10 +186,8 @@ export default function InstitutionalRegistry() {
       try {
         const emailId = member.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         
-        // 1. Delete from authorized registry
+        // Wipe all associated records
         await deleteDoc(doc(firestore, 'authorizedAdmins', emailId));
-        
-        // 2. Delete the user profile if it exists
         if (!member.isPendingAuth) {
           await deleteDoc(doc(firestore, 'users', member.id));
           await deleteDoc(doc(firestore, 'adminRoles', member.id));
@@ -222,7 +222,7 @@ export default function InstitutionalRegistry() {
         <header className="flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Institutional Registry</h1>
-            <p className="text-muted-foreground">Manage students and administrative staff access.</p>
+            <p className="text-muted-foreground">Manage students and administrative staff access from a unified ledger.</p>
           </div>
           {isSuperAdmin && (
             <Button 
@@ -236,7 +236,7 @@ export default function InstitutionalRegistry() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
+          <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-50 rounded-xl">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -247,20 +247,20 @@ export default function InstitutionalRegistry() {
               </div>
             </div>
           </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
+          <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-green-50 rounded-xl">
                 <ShieldCheck className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Staff & Admins</p>
+                <p className="text-sm font-medium text-muted-foreground">Administrative Staff</p>
                 <p className="text-2xl font-bold text-primary">
                   {combinedMembers.filter(u => u.role === 'Admin').length || 0}
                 </p>
               </div>
             </div>
           </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-white p-6 transition-all hover:shadow-md">
+          <Card className="border-none shadow-sm rounded-2xl bg-white p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-amber-50 rounded-xl">
                 <GraduationCap className="h-6 w-6 text-amber-600" />
@@ -281,45 +281,43 @@ export default function InstitutionalRegistry() {
               <div className="relative w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search by name or email..." 
+                  placeholder="Search registry by name or email..." 
                   className="pl-9 h-11 rounded-xl focus-visible:ring-primary shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-40 h-11 rounded-xl bg-white border-zinc-200">
+                <SelectTrigger className="w-48 h-11 rounded-xl bg-white border-zinc-200">
+                  <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="Admin">Administrators</SelectItem>
-                  <SelectItem value="Student">Students</SelectItem>
+                  <SelectItem value="all">All Registry Members</SelectItem>
+                  <SelectItem value="Admin">Administrators Only</SelectItem>
+                  <SelectItem value="Student">Students Only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="hidden md:flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] font-bold uppercase py-1 border-primary/20 text-primary">
-                Super Admin: {SUPER_ADMIN_EMAIL}
-              </Badge>
-            </div>
+            <Badge variant="outline" className="hidden lg:flex text-[10px] font-bold uppercase py-1 border-primary/20 text-primary">
+              Super Admin Control: {SUPER_ADMIN_EMAIL}
+            </Badge>
           </CardHeader>
           <CardContent className="p-0">
             {usersLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
-                <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Scanning Registry...</p>
+                <p className="text-muted-foreground font-bold text-[10px] uppercase tracking-widest">Scanning Registry...</p>
               </div>
             ) : (
               <Table>
                 <TableHeader className="bg-zinc-50/50">
                   <TableRow className="border-none">
-                    <TableHead className="font-bold px-6">Member Name</TableHead>
-                    <TableHead className="font-bold">Role</TableHead>
-                    <TableHead className="font-bold">Email</TableHead>
+                    <TableHead className="font-bold px-6">Member Information</TableHead>
+                    <TableHead className="font-bold">Institutional Role</TableHead>
+                    <TableHead className="font-bold">Registry Status</TableHead>
                     <TableHead className="font-bold">Affiliation</TableHead>
-                    <TableHead className="font-bold">Status</TableHead>
-                    <TableHead className="font-bold text-right px-6">Actions</TableHead>
+                    <TableHead className="font-bold text-right px-6">Access Management</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -333,7 +331,7 @@ export default function InstitutionalRegistry() {
                       <TableRow key={member.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50 group">
                         <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9 bg-primary/10 border-none transition-transform group-hover:scale-110">
+                            <Avatar className="h-10 w-10 bg-primary/10 border-none">
                               {member.photoURL && <AvatarImage src={member.photoURL} />}
                               <AvatarFallback className="text-primary font-bold">
                                 {member.fullName?.charAt(0)}
@@ -342,33 +340,19 @@ export default function InstitutionalRegistry() {
                             <div className="flex flex-col">
                               <span className="font-bold text-zinc-900 group-hover:text-primary transition-colors flex items-center gap-1.5">
                                 {member.fullName}
-                                {isSuper && <ShieldAlert className="h-3 w-3 text-secondary fill-secondary" title="Super Admin" />}
+                                {isSuper && <ShieldAlert className="h-3 w-3 text-secondary fill-secondary" />}
                               </span>
-                              {member.isPendingAuth && (
-                                <span className="text-[10px] text-amber-600 font-bold uppercase tracking-tighter">Auth Pending</span>
-                              )}
+                              <span className="text-xs text-muted-foreground font-medium">{member.email}</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={cn(
-                            "border-none font-bold px-2 py-0.5 uppercase text-[10px] tracking-widest",
+                            "border-none font-bold px-3 py-0.5 uppercase text-[9px] tracking-widest",
                             member.role === 'Admin' ? "bg-primary text-white" : "bg-zinc-100 text-zinc-600"
                           )}>
                             {member.role}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground font-medium">{member.email}</span>
-                        </TableCell>
-                        <TableCell>
-                          {isStudent ? (
-                            <Badge variant="outline" className="border-primary/20 text-primary font-bold px-2 py-0.5">
-                              {getProgramCode(member.programIds)}
-                            </Badge>
-                          ) : (
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">CICS Staff</span>
-                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -385,19 +369,29 @@ export default function InstitutionalRegistry() {
                             {member.status}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          {isStudent ? (
+                            <Badge variant="outline" className="border-primary/20 text-primary font-bold px-2 py-0.5">
+                              {getProgramCode(member.programIds)}
+                            </Badge>
+                          ) : (
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">CICS Management</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right px-6">
-                          {(canBlock || (isSuperAdmin && !isSuper)) ? (
+                          {canModify || canBlock ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100 transition-colors">
+                                <Button variant="ghost" size="icon" className="rounded-xl hover:bg-zinc-100">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="rounded-xl shadow-2xl border-none p-2 animate-in fade-in-0 zoom-in-95">
+                              <DropdownMenuContent align="end" className="rounded-xl shadow-2xl border-none p-2 w-56">
+                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-2">Account Actions</DropdownMenuLabel>
                                 {!member.isPendingAuth && canBlock && (
                                   <DropdownMenuItem 
                                     className={cn(
-                                      "cursor-pointer font-bold rounded-lg py-2",
+                                      "cursor-pointer font-bold rounded-lg py-2.5",
                                       member.status === 'active' ? "text-destructive" : "text-green-600"
                                     )}
                                     onClick={() => toggleUserStatus(member)}
@@ -410,17 +404,20 @@ export default function InstitutionalRegistry() {
                                   </DropdownMenuItem>
                                 )}
                                 {(member.role === 'Admin' || isSuperAdmin) && !isSuper && isSuperAdmin && (
-                                  <DropdownMenuItem 
-                                    className="cursor-pointer font-bold rounded-lg py-2 text-destructive"
-                                    onClick={() => handleDeleteAccount(member)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" /> Delete Account/Email
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuSeparator className="my-1 bg-zinc-50" />
+                                    <DropdownMenuItem 
+                                      className="cursor-pointer font-bold rounded-lg py-2.5 text-destructive focus:bg-destructive focus:text-white"
+                                      onClick={() => handleDeleteAccount(member)}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" /> Delete Account/Email
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           ) : (
-                            <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-widest px-2">Protected</span>
+                            <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-widest px-2">Protected Record</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -439,14 +436,14 @@ export default function InstitutionalRegistry() {
             <div className="p-3 bg-white/10 w-fit rounded-2xl mb-4">
               <ShieldCheck className="h-6 w-6 text-secondary" />
             </div>
-            <DialogTitle className="text-2xl font-bold font-headline uppercase">Authorize Admin</DialogTitle>
+            <DialogTitle className="text-2xl font-bold font-headline uppercase">Authorize Administrator</DialogTitle>
             <DialogDescription className="text-white/70">
               Grant institutional management clearance to a specific email address.
             </DialogDescription>
           </DialogHeader>
           <div className="p-8 space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Administrator Email</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Official Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <Input 
@@ -460,7 +457,7 @@ export default function InstitutionalRegistry() {
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
               <ShieldCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                Authorized users will automatically receive administrative access upon their first login using this email.
+                Once authorized, this user will automatically receive administrative access upon their first institutional login.
               </p>
             </div>
           </div>

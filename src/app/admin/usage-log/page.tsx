@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -116,7 +117,7 @@ export default function UsageLogPage() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">Institutional Usage Log</h1>
-            <p className="text-muted-foreground mt-1 text-lg">Comprehensive audit trail of institutional system interactions.</p>
+            <p className="text-muted-foreground mt-1 text-lg">Audit trail of all administrative and student system interactions.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -145,7 +146,7 @@ export default function UsageLogPage() {
             <Button 
               onClick={exportToCSV}
               disabled={!filteredLogs || filteredLogs.length === 0}
-              className="rounded-xl h-11 px-6 bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+              className="rounded-xl h-11 px-6 bg-primary text-white font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105"
             >
               <FileDown className="h-4 w-4 mr-2" />
               Export Ledger
