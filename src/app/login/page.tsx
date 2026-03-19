@@ -186,8 +186,8 @@ function LoginContent() {
             {logoImage && <Image src={logoImage.imageUrl} alt="NEU Logo" width={100} height={100} className="object-contain" />}
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">DOCUMENT MANAGEMENT SYSTEM</h1>
-            <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[12px]">College of Informatics and Computing Studies</p>
+            <h1 className="text-2xl md:text-3xl font-headline font-bold text-primary tracking-tight uppercase leading-none">College of Informatics and Computing Studies</h1>
+            <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[12px]">DOCUMENT MANAGEMENT SYSTEM</p>
           </div>
         </div>
 
