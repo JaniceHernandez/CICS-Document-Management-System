@@ -43,7 +43,7 @@ const adminLinks = [
 const studentLinks = [
   { href: '/student/documents', label: 'Institutional Library', icon: Search },
   { href: '/student/submit', label: 'My Submissions', icon: Upload },
-  { href: '/student/inquiries', label: 'My Inquiries', icon: MessageSquare },
+  { href: '/student/inquiries', label: 'Forum', icon: MessageSquare },
   { href: '/student/faq', label: 'Support & FAQ', icon: HelpCircle },
   { href: '/student/announcements', label: 'Announcements', icon: Bell },
 ];

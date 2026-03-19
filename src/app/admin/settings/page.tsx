@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -327,13 +326,15 @@ export default function AdminSettings() {
 
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
             <CardHeader className="bg-zinc-50/50 border-b p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Settings2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-bold">System Operations</CardTitle>
-                  <CardDescription>Global toggles and inquiry period configurations.</CardDescription>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Settings2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold">System Operations</CardTitle>
+                    <CardDescription>Global toggles and inquiry period configurations.</CardDescription>
+                  </div>
                 </div>
               </div>
             </CardHeader>
