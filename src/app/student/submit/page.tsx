@@ -8,13 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
   Table, 
   TableBody, 
   TableCell, 
@@ -62,7 +55,6 @@ export default function StudentSubmitPage() {
   const [editingDoc, setEditingDoc] = useState<any | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
-  const [editCatId, setEditCatId] = useState('');
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -79,10 +71,7 @@ export default function StudentSubmitPage() {
     );
   }, [firestore, user]);
 
-  const categoriesQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'categories') : null, [firestore, user]);
-
   const { data: documents, isLoading: submissionsLoading } = useCollection(mySubmissionsQuery);
-  const { data: categories } = useCollection(categoriesQuery);
 
   const submissions = documents?.filter(doc => {
     return doc.type === 'submission' || doc.fileUrl?.includes('student-submissions');
@@ -92,7 +81,6 @@ export default function StudentSubmitPage() {
     setEditingDoc(docData);
     setEditTitle(docData.title);
     setEditDesc(docData.description || '');
-    setEditCatId(docData.categoryId);
   };
 
   const saveEdit = () => {
@@ -100,7 +88,6 @@ export default function StudentSubmitPage() {
     updateDocumentNonBlocking(doc(firestore, 'documents', editingDoc.id), {
       title: editTitle,
       description: editDesc,
-      categoryId: editCatId,
       updatedAt: new Date().toISOString()
     });
     logActivity(firestore, user.uid, 'DOCUMENT_EDIT', `Updated metadata for submission: ${editTitle}`, editingDoc.id);
@@ -123,8 +110,6 @@ export default function StudentSubmitPage() {
       }
     }
   };
-
-  const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
 
   if (isUserLoading || (!user && !isUserLoading)) {
     return (
@@ -193,7 +178,7 @@ export default function StudentSubmitPage() {
                           <div>
                             <p className="font-bold text-zinc-800 leading-tight">{sub.title}</p>
                             <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                              {getCategoryName(sub.categoryId)} • {sub.fileSize ? (sub.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
+                              {sub.fileSize ? (sub.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB • PDF
                             </p>
                           </div>
                         </div>
@@ -261,19 +246,6 @@ export default function StudentSubmitPage() {
             <div className="space-y-2">
               <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Document Title</Label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="h-12 rounded-xl focus-visible:ring-primary shadow-sm" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Requirement Category</Label>
-              <Select value={editCatId} onValueChange={setEditCatId}>
-                <SelectTrigger className="h-12 rounded-xl shadow-sm">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {categories?.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Submission Notes</Label>

@@ -13,13 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { uploadToBlob } from '@/app/actions/storage';
@@ -28,7 +21,6 @@ import { logActivity } from '@/lib/activity-logging';
 import { Loader2, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 
 interface SubmitDocumentDialogProps {
   open: boolean;
@@ -44,13 +36,11 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setCategoryId('');
     setFile(null);
   };
 
@@ -79,7 +69,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
   }, [toast]);
 
   const handleSubmit = async () => {
-    if (!firestore || !user || !file || !categoryId) return;
+    if (!firestore || !user || !file) return;
     setLoading(true);
 
     try {
@@ -103,7 +93,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
         status: 'Pending Review',
         uploadDate: now,
         uploaderId: user.uid,
-        categoryId,
+        categoryId: 'student-submission', // Default category ID for submissions
         programIds: [], 
         downloadCount: 0,
         createdAt: now,
@@ -164,17 +154,6 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Capstone Phase 1 Documentation" className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Filing Category</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className="h-11 rounded-xl bg-white border-zinc-200 shadow-sm"><SelectValue placeholder="Select Requirement Type" /></SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {DOCUMENT_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="description" className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Filing Description</Label>
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Briefly explain the contents of this filing..." className="min-h-[100px] rounded-xl bg-white border-zinc-200 shadow-sm resize-none" />
             </div>
@@ -191,7 +170,7 @@ export function SubmitDocumentDialog({ open, onOpenChange }: SubmitDocumentDialo
 
         <DialogFooter className="p-8 bg-white border-t shrink-0 flex items-center justify-between">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-11 px-6 text-zinc-500 font-bold">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading || !title || !file || !categoryId} className="bg-primary text-white rounded-xl h-11 px-10 font-bold shadow-xl shadow-primary/20">
+          <Button onClick={handleSubmit} disabled={loading || !title || !file} className="bg-primary text-white rounded-xl h-11 px-10 font-bold shadow-xl shadow-primary/20">
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : 'File Requirement'}
           </Button>
         </DialogFooter>
