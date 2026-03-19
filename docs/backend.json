@@ -295,7 +295,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Inquiry",
       "type": "object",
-      "description": "Represents a student's inquiry or support request submitted to administrators.",
+      "description": "Represents a public forum inquiry or support request visible to the community.",
       "properties": {
         "id": {
           "type": "string",
@@ -303,36 +303,36 @@
         },
         "studentId": {
           "type": "string",
-          "description": "Reference to the User (Student) who submitted the inquiry. (Relationship: User 1:N Inquiry)"
+          "description": "Reference to the User (Student) who started the discussion."
         },
         "subject": {
           "type": "string",
-          "description": "The subject line of the inquiry."
+          "description": "The subject line or title of the discussion."
         },
         "message": {
           "type": "string",
-          "description": "The full message content of the inquiry."
+          "description": "The opening message content."
         },
         "submissionDate": {
           "type": "string",
-          "description": "Timestamp when the inquiry was submitted.",
+          "description": "Timestamp when the discussion was started.",
           "format": "date-time"
         },
         "status": {
           "type": "string",
-          "description": "The current status of the inquiry (e.g., 'Submitted', 'In Progress', 'Resolved', 'Closed')."
+          "description": "The current status (e.g., 'Open', 'Resolved')."
         },
         "adminId": {
           "type": "string",
-          "description": "Reference to the User (Admin) currently handling or who resolved the inquiry. Optional. (Relationship: User 1:N Inquiry)"
+          "description": "Reference to the Admin who resolved the issue. Optional."
         },
         "adminResponse": {
           "type": "string",
-          "description": "The response message provided by the administrator. Optional."
+          "description": "The official resolution provided by an administrator. Optional."
         },
         "responseDate": {
           "type": "string",
-          "description": "Timestamp when the administrator provided a response. Optional.",
+          "description": "Timestamp when the administrator provided a resolution. Optional.",
           "format": "date-time"
         },
         "createdAt": {
@@ -356,6 +356,23 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "Comment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Comment",
+      "type": "object",
+      "description": "A public reply or comment on a forum inquiry.",
+      "properties": {
+        "id": { "type": "string" },
+        "inquiryId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "content", "timestamp"]
     },
     "FAQ": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -579,7 +596,17 @@
           "schema": {
             "$ref": "#/backend/entities/Inquiry"
           },
-          "description": "Student support inquiries."
+          "description": "Public student support inquiries and discussions."
+        }
+      },
+      {
+        "path": "/inquiries/{inquiryId}/comments/{commentId}",
+        "definition": {
+          "entityName": "Comment",
+          "schema": {
+            "$ref": "#/backend/entities/Comment"
+          },
+          "description": "Forum replies and community comments."
         }
       },
       {
