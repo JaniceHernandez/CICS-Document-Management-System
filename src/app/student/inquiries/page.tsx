@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -421,7 +420,10 @@ export default function StudentForum() {
                   <CardContent className="p-8">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                       <div className="flex items-start gap-6">
-                        <div className={cn("p-4 rounded-2xl transition-all shadow-sm", isResolved ? "bg-green-100 text-green-600" : "bg-zinc-100 text-zinc-400")}>
+                        <div className={cn(
+                          "p-4 rounded-2xl transition-all shadow-sm", 
+                          isResolved ? "bg-green-100 text-green-600" : "bg-secondary/10 text-secondary"
+                        )}>
                           {isResolved ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
                         </div>
                         <div className="space-y-2">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -385,7 +384,7 @@ export default function AdminForumManagement() {
                       <div className="flex items-start gap-6">
                         <div className={cn(
                           "p-4 rounded-2xl shrink-0 transition-all group-hover:scale-110",
-                          isResolved ? "bg-green-50 text-green-600" : "bg-zinc-50 text-zinc-400"
+                          isResolved ? "bg-green-50 text-green-600" : "bg-secondary/10 text-secondary"
                         )}>
                           {isResolved ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
                         </div>
