@@ -153,6 +153,7 @@ export default function AdminForumManagement() {
 
   if (selectedInquiry) {
     const poster = getStudentProfile(selectedInquiry.studentId);
+    const isResolved = selectedInquiry.status === 'Resolved';
     return (
       <main className="p-8">
         <div className="max-w-5xl mx-auto space-y-8">
@@ -170,9 +171,9 @@ export default function AdminForumManagement() {
               <div className="flex items-center justify-between mb-6">
                 <Badge className={cn(
                   "border-none px-4 py-1.5 font-bold uppercase text-[10px] tracking-widest shadow-lg",
-                  selectedInquiry.status === 'Resolved' ? "bg-green-500 text-white" : "bg-secondary text-primary"
+                  isResolved ? "bg-green-500 text-white" : "bg-white/20 text-white"
                 )}>
-                  {selectedInquiry.status}
+                  {isResolved ? 'Resolved' : 'Active'}
                 </Badge>
                 <div className="flex gap-2">
                   <Button 
@@ -336,10 +337,10 @@ export default function AdminForumManagement() {
             <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-auto">
               <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-11">
                 <TabsTrigger value="active" className="rounded-lg text-xs font-bold px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  Ongoing Discussions
+                  Active
                 </TabsTrigger>
                 <TabsTrigger value="resolved" className="rounded-lg text-xs font-bold px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  Resolved Topics
+                  Resolved
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -372,65 +373,65 @@ export default function AdminForumManagement() {
                 <p className="text-muted-foreground text-lg">All community inquiries have been moderated.</p>
               </Card>
             ) : (
-              filteredInquiries?.map((iq) => (
-                <Card 
-                  key={iq.id} 
-                  className="border-none shadow-sm rounded-3xl overflow-hidden hover:shadow-xl hover:translate-y-[-2px] transition-all bg-white group cursor-pointer"
-                  onClick={() => { setSelectedInquiry(iq); setResolution(iq.adminResponse || ''); setAiSummary(''); }}
-                >
-                  <div className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                    <div className="flex items-start gap-6">
-                      <div className={cn(
-                        "p-4 rounded-2xl shrink-0 transition-all group-hover:scale-110",
-                        iq.status === 'Resolved' ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
-                      )}>
-                        {iq.status === 'Resolved' ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+              filteredInquiries?.map((iq) => {
+                const isResolved = iq.status === 'Resolved';
+                return (
+                  <Card 
+                    key={iq.id} 
+                    className="border-none shadow-sm rounded-3xl overflow-hidden hover:shadow-xl hover:translate-y-[-2px] transition-all bg-white group cursor-pointer"
+                    onClick={() => { setSelectedInquiry(iq); setResolution(iq.adminResponse || ''); setAiSummary(''); }}
+                  >
+                    <div className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                      <div className="flex items-start gap-6">
+                        <div className={cn(
+                          "p-4 rounded-2xl shrink-0 transition-all group-hover:scale-110",
+                          isResolved ? "bg-green-50 text-green-600" : "bg-zinc-50 text-zinc-400"
+                        )}>
+                          {isResolved ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{iq.subject}</h3>
+                            <Badge variant="outline" className="border-zinc-200 text-zinc-500 px-3 py-0.5 text-[9px] font-bold uppercase tracking-widest shadow-sm">
+                              {isResolved ? 'Resolved' : 'Active'}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground line-clamp-1 italic text-sm">"{iq.message}"</p>
+                          <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest pt-2">
+                            <span className="flex items-center gap-1.5 text-zinc-700">
+                              <User className="h-3 w-3" />
+                              {getStudentProfile(iq.studentId)?.fullName || 'Anonymous'}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1.5">
+                              <History className="h-3 w-3" />
+                              {new Date(iq.submissionDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{iq.subject}</h3>
-                          <Badge variant="secondary" className={cn(
-                            "border-none px-3 py-0.5 text-[9px] font-bold uppercase tracking-widest shadow-sm",
-                            iq.status === 'Resolved' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                          )}>
-                            {iq.status}
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground line-clamp-1 italic text-sm">"{iq.message}"</p>
-                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest pt-2">
-                          <span className="flex items-center gap-1.5 text-zinc-700">
-                            <User className="h-3 w-3" />
-                            {getStudentProfile(iq.studentId)?.fullName || 'Anonymous'}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1.5">
-                            <History className="h-3 w-3" />
-                            {new Date(iq.submissionDate).toLocaleDateString()}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl border-zinc-200 h-11 px-8 font-bold hover:bg-primary hover:text-white transition-all"
+                        >
+                          <Reply className="h-4 w-4 mr-2" />
+                          {isResolved ? 'View Discussion' : 'Moderator Actions'}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive hover:text-white rounded-xl h-11 w-11 transition-all"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(iq.id); }}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl border-zinc-200 h-11 px-8 font-bold hover:bg-primary hover:text-white transition-all"
-                      >
-                        <Reply className="h-4 w-4 mr-2" />
-                        {iq.status === 'Resolved' ? 'View Discussion' : 'Moderator Actions'}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:bg-destructive hover:text-white rounded-xl h-11 w-11 transition-all"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(iq.id); }}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                );
+              })
             )}
           </div>
         )}

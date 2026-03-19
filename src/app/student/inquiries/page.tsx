@@ -113,7 +113,7 @@ export default function StudentForum() {
         subject,
         message,
         submissionDate: new Date().toISOString(),
-        status: 'Open',
+        status: 'Active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -170,6 +170,7 @@ export default function StudentForum() {
   }
 
   if (selectedInquiry) {
+    const isResolved = selectedInquiry.status === 'Resolved';
     return (
       <main className="p-8">
         <div className="max-w-5xl mx-auto space-y-8">
@@ -187,9 +188,9 @@ export default function StudentForum() {
               <div className="flex items-center justify-between mb-6">
                 <Badge className={cn(
                   "border-none px-4 py-1.5 font-bold uppercase text-[10px] tracking-widest shadow-lg",
-                  selectedInquiry.status === 'Resolved' ? "bg-green-500 text-white" : "bg-secondary text-primary"
+                  isResolved ? "bg-green-500 text-white" : "bg-white/20 text-white"
                 )}>
-                  {selectedInquiry.status}
+                  {isResolved ? 'Resolved' : 'Active'}
                 </Badge>
                 <div className="flex items-center gap-4">
                   {selectedInquiry.studentId === user.uid && (
@@ -258,7 +259,7 @@ export default function StudentForum() {
                       <p className="text-muted-foreground font-medium">No comments yet. Help a peer out!</p>
                     </div>
                   ) : (
-                    comments.map((comment) => (
+                    comments?.map((comment) => (
                       <div key={comment.id} className={cn(
                         "flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2",
                         comment.userId === user?.uid ? "flex-row-reverse text-right" : ""
@@ -413,43 +414,48 @@ export default function StudentForum() {
               <p className="text-muted-foreground text-lg">Be the first to start a conversation about CICS policies.</p>
             </Card>
           ) : (
-            filteredInquiries?.map((iq) => (
-              <Card key={iq.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white hover:shadow-xl hover:translate-y-[-4px] transition-all cursor-pointer group" onClick={() => setSelectedInquiry(iq)}>
-                <CardContent className="p-8">
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div className="flex items-start gap-6">
-                      <div className={cn("p-4 rounded-2xl transition-all shadow-sm", iq.status === 'Resolved' ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700")}>
-                        {iq.status === 'Resolved' ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+            filteredInquiries?.map((iq) => {
+              const isResolved = iq.status === 'Resolved';
+              return (
+                <Card key={iq.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white hover:shadow-xl hover:translate-y-[-4px] transition-all cursor-pointer group" onClick={() => setSelectedInquiry(iq)}>
+                  <CardContent className="p-8">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                      <div className="flex items-start gap-6">
+                        <div className={cn("p-4 rounded-2xl transition-all shadow-sm", isResolved ? "bg-green-100 text-green-600" : "bg-zinc-100 text-zinc-400")}>
+                          {isResolved ? <CheckCircle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{iq.subject}</h3>
+                            <Badge variant="outline" className="px-3 py-0.5 font-bold uppercase text-[9px] tracking-widest border-zinc-200 text-zinc-500">
+                              {isResolved ? 'Resolved' : 'Active'}
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground line-clamp-2 italic text-sm">"{iq.message}"</p>
+                          <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest pt-2">
+                            <span className="flex items-center gap-1.5"><History className="h-3 w-3" />{new Date(iq.submissionDate).toLocaleDateString()}</span>
+                            <span className="flex items-center gap-1.5 text-primary"><MessageCircle className="h-3 w-3" />View Discussion</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{iq.subject}</h3>
-                          <Badge variant="secondary" className="px-3 py-0.5 font-bold uppercase text-[9px] tracking-widest">{iq.status}</Badge>
-                        </div>
-                        <p className="text-muted-foreground line-clamp-2 italic text-sm">"{iq.message}"</p>
-                        <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest pt-2">
-                          <span className="flex items-center gap-1.5"><History className="h-3 w-3" />{new Date(iq.submissionDate).toLocaleDateString()}</span>
-                          <span className="flex items-center gap-1.5 text-primary"><MessageCircle className="h-3 w-3" />View Discussion</span>
-                        </div>
+                      <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                        <Button variant="ghost" className="rounded-2xl h-12 px-6 font-bold group-hover:bg-primary group-hover:text-white transition-all">Join Thread</Button>
+                        {iq.studentId === user.uid && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:bg-destructive hover:text-white rounded-xl h-12 w-12 transition-all"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(iq.id, iq.subject); }}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                      <Button variant="ghost" className="rounded-2xl h-12 px-6 font-bold group-hover:bg-primary group-hover:text-white transition-all">Join Thread</Button>
-                      {iq.studentId === user.uid && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive hover:bg-destructive hover:text-white rounded-xl h-12 w-12 transition-all"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(iq.id, iq.subject); }}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </div>
