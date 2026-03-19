@@ -284,9 +284,9 @@ export default function StudentForum() {
             <CardFooter className="p-8 bg-zinc-50/50 border-t">
               <div className="w-full flex gap-4">
                 <Avatar className="h-12 w-12 border-2 border-white shadow-md shrink-0">
-                  <AvatarImage src={profile?.photoURL || user.photoURL || undefined} />
+                  <AvatarImage src={profile?.photoURL || user?.photoURL || undefined} />
                   <AvatarFallback className="bg-primary text-white font-bold">
-                    {profile?.fullName?.charAt(0) || user.email?.charAt(0)}
+                    {profile?.fullName?.charAt(0) || user?.email?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="relative flex-1">

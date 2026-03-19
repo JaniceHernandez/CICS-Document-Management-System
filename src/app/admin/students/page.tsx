@@ -88,7 +88,6 @@ export default function InstitutionalRegistry() {
 
   const isSuperAdmin = currentUser?.email === SUPER_ADMIN_EMAIL;
 
-  // Combine active users and pending administrative clearances into one unified list
   const combinedMembers = [...(users || [])];
   
   authorizedAdmins?.forEach(auth => {
@@ -114,7 +113,6 @@ export default function InstitutionalRegistry() {
     if (roleFilter === 'all') return matchesSearch;
     return matchesSearch && u.role === roleFilter;
   }).sort((a, b) => {
-    // Keep Super Admin at the top
     if (a.email === SUPER_ADMIN_EMAIL) return -1;
     if (b.email === SUPER_ADMIN_EMAIL) return 1;
     return (a.fullName || '').localeCompare(b.fullName || '');
@@ -186,7 +184,6 @@ export default function InstitutionalRegistry() {
       try {
         const emailId = member.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         
-        // Wipe all associated records
         await deleteDoc(doc(firestore, 'authorizedAdmins', emailId));
         if (!member.isPendingAuth) {
           await deleteDoc(doc(firestore, 'users', member.id));

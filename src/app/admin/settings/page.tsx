@@ -205,7 +205,6 @@ export default function AdminSettings() {
         </header>
 
         <div className="grid grid-cols-1 gap-10">
-          {/* Document Classifications Table */}
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
             <CardHeader className="bg-zinc-50/50 border-b p-6">
               <div className="flex items-center justify-between">
@@ -264,7 +263,6 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          {/* Academic Programs Table */}
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
             <CardHeader className="bg-zinc-50/50 border-b p-6">
               <div className="flex items-center justify-between">
@@ -327,7 +325,6 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          {/* Operational Settings */}
           <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
             <CardHeader className="bg-zinc-50/50 border-b p-6">
               <div className="flex items-center gap-3">

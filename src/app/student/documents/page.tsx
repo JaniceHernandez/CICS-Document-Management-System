@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,6 @@ import {
   Download, 
   Eye, 
   Loader2,
-  X,
   ShieldCheck,
   Info,
   ArrowUpDown,
@@ -46,7 +46,15 @@ export default function StudentDocuments() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const userDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
@@ -58,12 +66,6 @@ export default function StudentDocuments() {
   const { data: documents, isLoading: isDocsLoading } = useCollection(docsQuery);
   const { data: categories } = useCollection(categoriesQuery);
   const { data: programs } = useCollection(programsQuery);
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
 
   const filteredDocs = documents?.filter(doc => {
     const isStudentSub = doc.fileUrl?.includes('student-submissions') || doc.type === 'submission';
@@ -119,7 +121,7 @@ export default function StudentDocuments() {
   const getCategoryName = (id: string) => categories?.find(c => c.id === id)?.name || 'Requirement';
   const getProgramCode = (id: string) => programs?.find(p => p.id === id)?.shortCode || 'Global';
 
-  if (isUserLoading || isProfileLoading) {
+  if (!mounted || isUserLoading || isProfileLoading) {
     return (
       <div className="flex flex-1 items-center justify-center p-20">
         <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -263,17 +265,14 @@ export default function StudentDocuments() {
       </div>
 
       <Dialog open={!!previewDoc} onOpenChange={(open) => { if(!open) setPreviewDoc(null); }}>
-        <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl">
-          <DialogHeader className="p-6 bg-primary text-white shrink-0 relative">
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none rounded-3xl [&>button]:text-white [&>button]:top-6 [&>button]:right-6 [&>button]:scale-125">
+          <DialogHeader className="p-6 bg-primary text-white shrink-0">
             <div>
-              <DialogTitle className="text-2xl font-headline font-bold">{previewDoc?.title}</DialogTitle>
+              <DialogTitle className="text-2xl font-headline font-bold pr-12">{previewDoc?.title}</DialogTitle>
               <DialogDescription className="text-white/70">
                 Uploaded on {previewDoc && new Date(previewDoc.uploadDate || previewDoc.createdAt).toLocaleDateString()}
               </DialogDescription>
             </div>
-            <Button variant="ghost" className="absolute right-4 top-14 text-white hover:bg-white/20 h-10 w-10 p-0 rounded-full" onClick={() => setPreviewDoc(null)}>
-              <X className="h-6 w-6" />
-            </Button>
           </DialogHeader>
           
           <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-zinc-50">
